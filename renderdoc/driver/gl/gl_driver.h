@@ -525,7 +525,7 @@ private:
 
   private:
     // kept private to force everyone through accessors above
-    GLResourceRecord *m_TextureRecord[11][256];
+    GLResourceRecord *m_TextureRecord[12][256];
   };
 
   struct ClientMemoryData
@@ -662,6 +662,24 @@ public:
   void AddDebugMessage(MessageCategory c, MessageSeverity sv, MessageSource src, rdcstr d);
 
   void RegisterDebugCallback();
+
+  struct ExternalTextureResources
+  {
+#if defined(RENDERDOC_PLATFORM_ANDROID)
+    AHardwareBuffer *hw_buffer = nullptr;
+#endif
+    EGLClientBuffer cl_buffer = nullptr;
+    EGLImageKHR image = EGL_NO_IMAGE_KHR;
+  };
+  rdcarray<ExternalTextureResources> m_ExternalTextureResources;
+
+public:
+
+  bool ReadExternalTexture(GLuint texture, byte*& pixels, size_t& size);
+  void AddExternalTexture(GLuint image_index, GLint width, GLint height, GLenum internal_format);
+  void WriteExternalTexture(GLuint image_index, const byte *pixels, size_t size);
+  void ReleaseExternalTextureResources();
+
 
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
   // replay interface
@@ -2018,6 +2036,9 @@ public:
   void Common_glNamedBufferStorageEXT(ResourceId id, GLsizeiptr size, const void *data,
                                       GLbitfield flags);
 
+  void Common_glEGLImageTargetTexture2DOES(ResourceId id, GLenum target, GLeglImageOES image);
+
+
   void MarkReferencedWhileCapturing(GLResourceRecord *record, FrameRefType refType);
 
   IMPLEMENT_FUNCTION_SERIALISED(GLenum, glCheckNamedFramebufferStatusEXT, GLuint framebuffer,
@@ -2562,6 +2583,16 @@ public:
   IMPLEMENT_FUNCTION_SERIALISED(void, glGetPerfQueryInfoINTEL, GLuint queryId,
                                 GLuint queryNameLength, GLchar *queryName, GLuint *dataSize,
                                 GLuint *noCounters, GLuint *noInstances, GLuint *capsMask);
+
+  /*IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetRenderbufferStorageOES, GLenum target,
+                                GLeglImageOES image);
+  IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexStorageEXT, GLenum target,
+                                GLeglImageOES image, const GLint *attrib_list);
+  */IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+                                GLeglImageOES image);
+  /*IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTextureStorageEXT, GLuint texture,
+                                GLeglImageOES image, const GLint *attrib_list);
+*/
 };
 
 class ScopedDebugContext

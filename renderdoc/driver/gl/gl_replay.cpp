@@ -485,6 +485,29 @@ void GLReplay::CacheTexture(ResourceId id)
   drv.glGetTextureLevelParameterivEXT(res.resource.name, levelQueryType, 0, eGL_TEXTURE_SAMPLES,
                                       &samples);
 
+  RDCERR("m_CachedTextures2_2 %u %u", (uint32_t)width, (uint32_t)height);
+
+  {
+    GLint wid = 1, hei = 1;
+    drv.glGetTextureLevelParameterivEXT(res.resource.name, target, 0, eGL_TEXTURE_WIDTH, &wid);
+    drv.glGetTextureLevelParameterivEXT(res.resource.name, target, 0, eGL_TEXTURE_HEIGHT, &hei);
+    RDCERR("m_CachedTextures2_3 (trg = %u name=%u) %u %u", (uint32_t)target,
+           (uint32_t)res.resource.name,
+           (uint32_t)wid, (uint32_t)hei);
+
+    GLuint prevtex = 0;
+    drv.glGetIntegerv(target, (GLint *)&prevtex);
+
+    //GLint width = 0, height = 0, depth = 0;
+    drv.glBindTexture(target, res.resource.name);
+    drv.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_WIDTH, &wid);
+    drv.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_HEIGHT, &hei);
+    RDCERR("m_CachedTextures2_4 (%u %u) %u %u", (uint32_t)res.resource.name, (uint32_t)levelQueryType, (uint32_t)wid, (uint32_t)hei);
+
+    drv.glBindTexture(target, prevtex);
+  }
+
+
   // the above queries sometimes come back 0, if we have dimensions from creation functions, use
   // those
   if(width == 0 && res.width > 0)
@@ -529,11 +552,17 @@ void GLReplay::CacheTexture(ResourceId id)
     case eGL_TEXTURE_2D_MULTISAMPLE_ARRAY: tex.type = TextureType::Texture2DMSArray; break;
     case eGL_TEXTURE_CUBE_MAP: tex.type = TextureType::TextureCube; break;
     case eGL_TEXTURE_CUBE_MAP_ARRAY: tex.type = TextureType::TextureCubeArray; break;
+    case eGL_TEXTURE_EXTERNAL_OES: tex.type = TextureType::TextureExternal; break;
 
     default:
       tex.type = TextureType::Unknown;
       RDCERR("Unexpected texture enum %s", ToStr(target).c_str());
   }
+
+  RDCERR("m_CachedTextures2_1 %u %u", (uint32_t)width, (uint32_t)height);
+
+  RDCERR("m_CachedTextures2_0 %u %u %u %u", tex.width, tex.height, tex.depth, tex.byteSize);
+
 
   switch(target)
   {
@@ -551,6 +580,7 @@ void GLReplay::CacheTexture(ResourceId id)
     case eGL_TEXTURE_RECTANGLE:
     case eGL_TEXTURE_2D_MULTISAMPLE:
     case eGL_TEXTURE_CUBE_MAP:
+    case eGL_TEXTURE_EXTERNAL_OES:
       tex.dimension = 2;
       tex.width = (uint32_t)width;
       tex.height = (uint32_t)height;
@@ -611,6 +641,8 @@ void GLReplay::CacheTexture(ResourceId id)
       tex.width = uint32_t(tex.byteSize / RDCMAX(1, tex.format.compByteWidth * tex.format.compCount));
     }
 
+    RDCERR("m_CachedTextures1 %u %u %u %u", tex.width, tex.height, tex.depth, tex.byteSize);
+
     m_CachedTextures[id] = tex;
     return;
   }
@@ -653,6 +685,8 @@ void GLReplay::CacheTexture(ResourceId id)
 
   tex.byteSize *= tex.arraysize;
   tex.byteSize *= tex.msSamp;
+
+  RDCERR("m_CachedTextures2_f %u %u %u %u", tex.width, tex.height, tex.depth, tex.byteSize);
 
   m_CachedTextures[id] = tex;
 }
@@ -1251,6 +1285,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
             case TextureType::Texture3D: target = eGL_TEXTURE_3D; break;
             case TextureType::TextureCube: target = eGL_TEXTURE_CUBE_MAP; break;
             case TextureType::TextureCubeArray: target = eGL_TEXTURE_CUBE_MAP_ARRAY; break;
+            case TextureType::TextureExternal: target = eGL_TEXTURE_EXTERNAL_OES; break;
             case TextureType::Count: RDCERR("Invalid shader resource type"); break;
           }
 
@@ -1344,7 +1379,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
 
         GLenum levelQueryType =
             target == eGL_TEXTURE_CUBE_MAP ? eGL_TEXTURE_CUBE_MAP_POSITIVE_X : target;
-        GLenum fmt = eGL_NONE;
+        GLenum fmt = target == eGL_TEXTURE_EXTERNAL_OES ? eGL_RGBA : eGL_NONE;
         drv.glGetTexLevelParameteriv(levelQueryType, 0, eGL_TEXTURE_INTERNAL_FORMAT, (GLint *)&fmt);
         if(IsDepthStencilFormat(fmt))
         {
@@ -2493,6 +2528,8 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
 
       // create temporary texture of width/height in the new format to render to
       drv.glGenTextures(1, &tempTex);
+      RDCERR("glGenTextures_1 (trg = %u name=%u)", (uint32_t)newtarget, (uint32_t)tempTex);
+
       drv.glBindTexture(newtarget, tempTex);
       if(newtarget == eGL_TEXTURE_3D)
         drv.glTextureImage3DEXT(tempTex, newtarget, 0, finalFormat, width, height, depth, 0,
@@ -2651,6 +2688,8 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
 
     // create temporary texture of width/height in same format to render to
     drv.glGenTextures(1, &tempTex);
+    RDCERR("glGenTextures_2 (trg = %u name=%u)", (uint32_t)eGL_TEXTURE_2D, (uint32_t)tempTex);
+
     drv.glBindTexture(eGL_TEXTURE_2D, tempTex);
     drv.glTextureImage2DEXT(tempTex, eGL_TEXTURE_2D, 0, intFormat, width, height, 0,
                             GetBaseFormat(intFormat), GetDataType(intFormat), NULL);
@@ -3113,6 +3152,8 @@ void GLReplay::CreateCustomShaderTex(uint32_t w, uint32_t h)
   uint32_t mips = CalcNumMips((int)w, (int)h, 1);
 
   m_pDriver->glGenTextures(1, &DebugData.customTex);
+  RDCERR("glGenTextures_3 (trg = %u name=%u)", (uint32_t)eGL_TEXTURE_2D, (uint32_t)DebugData.customTex);
+
   m_pDriver->glBindTexture(eGL_TEXTURE_2D, DebugData.customTex);
   for(uint32_t i = 0; i < mips; i++)
   {
@@ -3253,8 +3294,11 @@ ResourceId GLReplay::CreateProxyTexture(const TextureDescription &templateTex)
     case TextureType::Texture3D: target = eGL_TEXTURE_3D; break;
     case TextureType::TextureCube: target = eGL_TEXTURE_CUBE_MAP; break;
     case TextureType::TextureCubeArray: target = eGL_TEXTURE_CUBE_MAP_ARRAY; break;
+    case TextureType::TextureExternal: target = eGL_TEXTURE_EXTERNAL_OES; break;
     case TextureType::Count: RDCERR("Invalid texture dimension"); break;
   }
+  RDCERR("glGenTextures_4 (trg = %u name=%u)", (uint32_t)target, (uint32_t)tex);
+
 
   if(target != eGL_NONE)
   {
@@ -3576,6 +3620,9 @@ void GLReplay::SetProxyTextureData(ResourceId texid, const Subresource &sub, byt
       // texture views inside CopyArrayToTex2DMS
       GLuint uploadTex = 0;
       drv.glGenTextures(1, &uploadTex);
+      RDCERR("glGenTextures_5 (trg = %u name=%u)", (uint32_t)eGL_TEXTURE_2D_ARRAY,
+             (uint32_t)uploadTex);
+
       drv.glBindTexture(eGL_TEXTURE_2D_ARRAY, uploadTex);
       drv.glTextureStorage3DEXT(uploadTex, eGL_TEXTURE_2D_ARRAY, 1, texdetails.internalFormat,
                                 width, height, texdetails.samples * RDCMAX(1, texdetails.depth));
@@ -3667,6 +3714,7 @@ bool GLReplay::IsTextureSupported(const TextureDescription &tex)
     case TextureType::Texture3D: target = eGL_TEXTURE_3D; break;
     case TextureType::TextureCube: target = eGL_TEXTURE_CUBE_MAP; break;
     case TextureType::TextureCubeArray: target = eGL_TEXTURE_CUBE_MAP_ARRAY; break;
+    case TextureType::TextureExternal: target = eGL_TEXTURE_EXTERNAL_OES; break;
     case TextureType::Count: RDCERR("Invalid texture dimension"); break;
   }
 

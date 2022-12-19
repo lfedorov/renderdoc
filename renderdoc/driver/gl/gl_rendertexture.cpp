@@ -133,6 +133,8 @@ bool GLReplay::RenderTextureInternal(TextureDisplay cfg, TexDisplayFlags flags)
       drv.glGenTextures(1, &castTexture);
       drv.glActiveTexture(eGL_TEXTURE0);
       drv.glBindTexture(target, castTexture);
+      RDCERR("glGenTextures_10 (trg = %u name=%u)", (uint32_t)target,
+             (uint32_t)castTexture);
 
       // can't use texture views because the underlying image isn't immutable because we don't
       // want to rely on texture storage. We also can't rely on texture views, meaning we need a
