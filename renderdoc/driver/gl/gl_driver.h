@@ -525,7 +525,7 @@ private:
 
   private:
     // kept private to force everyone through accessors above
-    GLResourceRecord *m_TextureRecord[11][256];
+    GLResourceRecord *m_TextureRecord[12][256];
   };
 
   struct ClientMemoryData
@@ -662,6 +662,22 @@ public:
   void AddDebugMessage(MessageCategory c, MessageSeverity sv, MessageSource src, rdcstr d);
 
   void RegisterDebugCallback();
+
+  struct ExternalTextureResources
+  {
+#if defined(RENDERDOC_PLATFORM_ANDROID)
+    AHardwareBuffer *hw_buffer = nullptr;
+#endif
+    EGLClientBuffer cl_buffer = nullptr;
+    EGLImageKHR image = EGL_NO_IMAGE_KHR;
+  };
+  rdcarray<ExternalTextureResources> m_ExternalTextureResources;
+
+public:
+  EGLImageKHR CreateEGLImage(GLint width, GLint height, GLenum internal_format);
+  rdcarray<byte> ReadExternalTextureData(GLuint texture);
+  void WriteExternalTexture(EGLImageKHR egl_image, const byte *pixels, uint64_t size);
+  void ReleaseExternalTextureResources();
 
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
   // replay interface
@@ -2562,6 +2578,9 @@ public:
   IMPLEMENT_FUNCTION_SERIALISED(void, glGetPerfQueryInfoINTEL, GLuint queryId,
                                 GLuint queryNameLength, GLchar *queryName, GLuint *dataSize,
                                 GLuint *noCounters, GLuint *noInstances, GLuint *capsMask);
+
+  IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+                                GLeglImageOES image);
 };
 
 class ScopedDebugContext
