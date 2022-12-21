@@ -874,7 +874,7 @@ static rdcstr DimensionString(int dimensions, GLint width, GLint height, GLint d
 rdcstr GetTextureCompleteStatus(GLenum target, GLuint tex, GLuint sampler)
 {
   // unbound and texture buffers don't need to be checked
-  if(tex == 0 || target == eGL_TEXTURE_BUFFER)
+  if(tex == 0 || target == eGL_TEXTURE_BUFFER || target == eGL_TEXTURE_EXTERNAL_OES)
     return rdcstr();
 
   // the completeness rules are fairly complex. The relevant spec is copied here and each rule is

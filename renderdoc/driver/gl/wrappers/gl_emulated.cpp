@@ -2646,6 +2646,11 @@ void APIENTRY _glGetTexImage(GLenum target, GLint level, const GLenum format, co
       GLNOTIMP("Reading pixels from texture buffer");
       return;
 
+    case eGL_TEXTURE_EXTERNAL_OES:
+      // TODO implement this
+      GLNOTIMP("Reading pixels from external texture");
+      return;
+
     default: break;
   }
 

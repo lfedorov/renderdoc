@@ -5,7 +5,7 @@ pushd .
 	mkdir build\android_arm64
 	cd    build\android_arm64
 	
-	::set PATH=C:/Gilat-Runner/msys2-64/mingw64/bin;%PATH%
+	::set PATH=C:/msys64/mingw64/bin;%PATH%
 	
 	goto compile_only
 	
@@ -22,7 +22,7 @@ pushd .
 	::make -j16
 
 
-	xcopy /y .\bin\org.renderdoc.renderdoccmd.arm64.apk d:\projects\git\renderdoc\x64\Development\plugins\android\
+	xcopy /y .\bin\org.renderdoc.renderdoccmd.arm64.apk c:\projects\git\wolvic\renderdoc_fedorov\x64\Development\plugins\android\
 	
 popd
 pause

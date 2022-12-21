@@ -647,6 +647,20 @@ void GLReplay::CacheTexture(ResourceId id)
     return;
   }
 
+  if(target == eGL_TEXTURE_EXTERNAL_OES)
+  {
+    tex.cubemap = false;
+    tex.mips = 1;
+    tex.arraysize = 1;
+    tex.creationFlags = TextureCategory::ShaderRead;
+    tex.msQual = 0;
+    tex.msSamp = 1;
+    tex.byteSize = 0;
+
+    m_CachedTextures[id] = tex;
+    return;
+  }
+
   if(res.view)
   {
     tex.mips = Log2Floor(res.mipsValid + 1);
@@ -1362,7 +1376,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
       {
         GLint firstMip = 0, numMips = 1;
 
-        if(target != eGL_TEXTURE_BUFFER)
+        if(target != eGL_TEXTURE_BUFFER && target != eGL_TEXTURE_EXTERNAL_OES)
         {
           drv.glGetTextureParameterivEXT(tex, target, eGL_TEXTURE_BASE_LEVEL, &firstMip);
           drv.glGetTextureParameterivEXT(tex, target, eGL_TEXTURE_MAX_LEVEL, &numMips);
@@ -1379,7 +1393,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
 
         GLenum levelQueryType =
             target == eGL_TEXTURE_CUBE_MAP ? eGL_TEXTURE_CUBE_MAP_POSITIVE_X : target;
-        GLenum fmt = target == eGL_TEXTURE_EXTERNAL_OES ? eGL_RGBA : eGL_NONE;
+        GLenum fmt = /*target == eGL_TEXTURE_EXTERNAL_OES ? eGL_RGBA :*/ eGL_NONE;
         drv.glGetTexLevelParameteriv(levelQueryType, 0, eGL_TEXTURE_INTERNAL_FORMAT, (GLint *)&fmt);
         if(IsDepthStencilFormat(fmt))
         {
@@ -1427,7 +1441,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
         pipe.textures[unit].completeStatus = it->second;
 
         if(target != eGL_TEXTURE_BUFFER && target != eGL_TEXTURE_2D_MULTISAMPLE &&
-           target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY)
+           target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY && target != eGL_TEXTURE_EXTERNAL_OES)
         {
           if(samp != 0)
             drv.glGetSamplerParameterfv(samp, eGL_TEXTURE_BORDER_COLOR,
@@ -2462,6 +2476,48 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
   {
     RDCERR("Trying to get texture data for unknown ID %s!", ToStr(tex).c_str());
     return;
+  }
+
+  if(texType == eGL_TEXTURE_EXTERNAL_OES)
+  {
+      if (params.remap != RemapTexture::NoRemap && params.remap != RemapTexture::RGBA8)
+      {
+        RDCERR("GLReplay::GetTextureData - Invalid remap option for external texture");
+        return;
+      }
+      size_t remapExtraSize =
+          (intFormat == eGL_RGB8 && params.remap == RemapTexture::RGBA8) ? (width * height) : 0;
+
+      size_t size = GetByteSize(width, height, 1, GetBaseFormat(intFormat), eGL_UNSIGNED_BYTE);
+      data.resize(remapExtraSize + size);
+
+      //GLResource liveRes = drv.GetResourceManager()->GetLiveResource(tex);
+     // if(drv.ReadExternalTexture(liveRes.name, (byte*)data.begin(), size))
+      //  RDCERR("GLReplay::GetTextureData - ReadExternalTexture failed");
+
+      GLResource Res = drv.GetResourceManager()->GetLiveResource(tex);
+      if(drv.ReadExternalTexture(Res.name, (byte *)(data.begin() + remapExtraSize), size))
+      {
+        if (remapExtraSize)
+        {
+          uint32_t *pwrite = (uint32_t *)data.begin();
+          const byte *pread = (const byte *)(data.begin() + remapExtraSize);
+          const byte *pread_end = data.begin() + data.size();
+          while(pread != pread_end)
+          {
+            *pwrite = uint32_t(pread[0]) | uint32_t(pread[1] << 8) | uint32_t(pread[2] << 16) |
+                      uint32_t(0xff000000);
+            ++pwrite;
+            pread += 3;
+          }
+        }
+      }
+      else
+      {
+        RDCERR("GLReplay::GetTextureData - ReadExternalTexture failed");
+      }
+
+      return;
   }
 
   if(texType == eGL_TEXTURE_BUFFER)

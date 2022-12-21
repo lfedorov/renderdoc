@@ -2192,7 +2192,7 @@ bool GLReplay::GetHistogram(ResourceId texid, const Subresource &sub, CompType t
   GLint forcedparam[4] = {};
 
   bool levelsTex = (target != eGL_TEXTURE_BUFFER && target != eGL_TEXTURE_2D_MULTISAMPLE &&
-                    target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY);
+       target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY && target != eGL_TEXTURE_EXTERNAL_OES);
 
   if(levelsTex)
   {

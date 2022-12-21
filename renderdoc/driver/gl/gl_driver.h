@@ -34,6 +34,7 @@
 #include "gl_manager.h"
 #include "gl_renderstate.h"
 #include "gl_resources.h"
+#include <vector>
 
 class GLReplay;
 
@@ -663,21 +664,34 @@ public:
 
   void RegisterDebugCallback();
 
-  struct ExternalTextureResources
+  struct ExternalTextureResource: public ResourceId
   {
+    //ResourceId resourceId;
+    uint32_t width, height;
+    GLenum format; // sized format
 #if defined(RENDERDOC_PLATFORM_ANDROID)
     AHardwareBuffer *hw_buffer = nullptr;
 #endif
     EGLClientBuffer cl_buffer = nullptr;
     EGLImageKHR image = EGL_NO_IMAGE_KHR;
+
+    ExternalTextureResource(const ResourceId& texture, uint32_t width, uint32_t height, GLenum format)
+        : ResourceId(texture), width{width}, height{height}, format{format}
+    {
+    }
   };
-  rdcarray<ExternalTextureResources> m_ExternalTextureResources;
+  //rdcarray<ExternalTextureResource> m_ExternalTextureResources;
+  std::vector<ExternalTextureResource> m_ExternalTextureResources;
 
 public:
 
-  bool ReadExternalTexture(GLuint texture, byte*& pixels, size_t& size);
-  void AddExternalTexture(GLuint image_index, GLint width, GLint height, GLenum internal_format);
-  void WriteExternalTexture(GLuint image_index, const byte *pixels, size_t size);
+  static bool ReadExternalTexture(GLuint texture, byte *pixels, size_t size);
+  static bool WriteExternalTexture(const ExternalTextureResource* etr, const byte *pixels);
+  ExternalTextureResource * AddExternalTexture(ResourceId texture, GLuint width,
+                                                          GLuint height, GLenum internal_format);
+  ExternalTextureResource *FindExternalTexture(ResourceId texture, GLuint width, GLuint height,
+                                              GLenum internal_format);
+  
   void ReleaseExternalTextureResources();
 
 
@@ -1099,6 +1113,15 @@ public:
   template <typename SerialiserType>
   bool Serialise_glFenceSync(SerialiserType &ser, GLsync real, GLenum condition, GLbitfield flags);
   GLsync glFenceSync(GLenum condition, GLbitfield flags);
+
+  //external textures
+  void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image);
+  template <typename SerialiserType>
+  bool Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLenum target,
+                                              GLuint textureHandle, GLuint width, GLuint height,
+                                              GLenum format);
+  
+
 
   IMPLEMENT_FUNCTION_SERIALISED(GLenum, glClientWaitSync, GLsync sync, GLbitfield flags,
                                 GLuint64 timeout);
@@ -2036,7 +2059,7 @@ public:
   void Common_glNamedBufferStorageEXT(ResourceId id, GLsizeiptr size, const void *data,
                                       GLbitfield flags);
 
-  void Common_glEGLImageTargetTexture2DOES(ResourceId id, GLenum target, GLeglImageOES image);
+  //void Common_glEGLImageTargetTexture2DOES(ResourceId id, GLenum target, GLeglImageOES image);
 
 
   void MarkReferencedWhileCapturing(GLResourceRecord *record, FrameRefType refType);
@@ -2588,8 +2611,12 @@ public:
                                 GLeglImageOES image);
   IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexStorageEXT, GLenum target,
                                 GLeglImageOES image, const GLint *attrib_list);
-  */IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
-                                GLeglImageOES image);
+  */
+  
+  //IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+  //                              GLeglImageOES image);
+
+
   /*IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTextureStorageEXT, GLuint texture,
                                 GLeglImageOES image, const GLint *attrib_list);
 */

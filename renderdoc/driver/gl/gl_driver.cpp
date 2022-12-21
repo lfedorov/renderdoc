@@ -978,6 +978,8 @@ WrappedOpenGL::~WrappedOpenGL()
 
   RenderDoc::Inst().UnregisterMemoryRegion(this);
 
+  ReleaseExternalTextureResources();
+
   delete m_Replay;
 }
 
@@ -2898,7 +2900,7 @@ void WrappedOpenGL::CreateTextureImage(GLuint tex, GLenum internalFormat, GLenum
                                        GLenum initTypeHint, GLenum textype, GLint dim, GLint width,
                                        GLint height, GLint depth, GLint samples, int mips)
 {
-  if(textype == eGL_TEXTURE_BUFFER)
+  if(textype == eGL_TEXTURE_BUFFER || textype == eGL_TEXTURE_EXTERNAL_OES)
   {
     return;
   }
@@ -4831,7 +4833,7 @@ bool WrappedOpenGL::ProcessChunk(ReadSerialiser &ser, GLChunk chunk)
       return Serialise_glGetQueryBufferObjectuiv(ser, 0, 0, eGL_NONE, 0);
 
     case GLChunk::glEGLImageTargetTexture2DOES:
-      return Serialise_glEGLImageTargetTexture2DOES(ser, eGL_NONE, NULL);
+      return Serialise_glEGLImageTargetTexture2DOES(ser, eGL_NONE, 0, 0, 0, eGL_NONE);
 
     // these functions are not currently serialised - they do nothing on replay and are not
     // serialised for information (it would be harmless and perhaps useful for the user to see
