@@ -680,6 +680,10 @@ public:
   void WriteExternalTexture(GLuint image_index, const byte *pixels, size_t size);
   void ReleaseExternalTextureResources();
 
+  EGLImageKHR CreateEGLImage(GLint width, GLint height, GLenum internal_format);
+  rdcarray<byte> ReadExternalTextureData(GLuint texture);
+  void WriteExternalTexture2(EGLImageKHR egl_image, const byte *pixels, uint64_t size);
+
 
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
   // replay interface

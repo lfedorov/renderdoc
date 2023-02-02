@@ -7,14 +7,13 @@ pushd .
 	
 	::set PATH=C:/Gilat-Runner/msys2-64/mingw64/bin;%PATH%
 	
-	goto compile_only
+	::goto compile_only
 	
 	cmake ^
 		-DBUILD_ANDROID=On ^
 		-DANDROID_ABI=armeabi-v7a ^
 		-DENABLE_VULKAN=On ^
-		-DCMAKE_MAKE_PROGRAM=mingw32-make.exe ^
-		-G "MinGW Makefiles" ../..
+		-G "Ninja" ../..
 		
 	:compile_only
 	

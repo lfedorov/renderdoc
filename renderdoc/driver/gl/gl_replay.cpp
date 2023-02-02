@@ -2464,6 +2464,62 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
     return;
   }
 
+  if(texType == eGL_TEXTURE_EXTERNAL_OES)
+  {
+    /*if(params.remap != RemapTexture::NoRemap && params.remap != RemapTexture::RGBA8)
+    {
+      RDCERR("GLReplay::GetTextureData - Invalid remap option for external texture");
+      return;
+    }
+    size_t remapExtraSize = (intFormat == eGL_RGB8 && params.remap == RemapTexture::RGBA8) ? (width * height) : 0;
+    size_t size = GetByteSize(width, height, 1, GetBaseFormat(intFormat), eGL_UNSIGNED_BYTE);
+
+    data = texDetails.compressedData[0];
+    data.resize(remapExtraSize + size);
+    //GLResource Res = drv.GetResourceManager()->GetCurrentResource(tex);
+    //if(drv.ReadExternalTextureData(Res.name)
+    */
+    const rdcarray<byte>& intData = texDetails.compressedData[0];
+    
+    if(params.remap == RemapTexture::NoRemap)
+    {
+      data.assign(intData);
+    }
+    else if(params.remap == RemapTexture::RGBA8)
+    {
+      size_t size = width * height;
+      data.resize(size * sizeof(uint32_t));
+      uint32_t* pwrite = (uint32_t*)data.data();
+      const byte* pread = (const byte*)intData.data();
+
+      if(intFormat == eGL_R8) 
+      {
+        while(size--)
+        {
+          *pwrite++ = uint32_t(pread[0]) | 0xff000000u;
+          pread += 1;
+        }
+      }
+      else if(intFormat == eGL_RGB8) 
+      {
+        while(size--)
+        {
+          *pwrite++ = uint32_t(pread[0]) | uint32_t(pread[1]) << 8 | uint32_t(pread[2]) << 16 | 0xff000000u;
+          pread += 3;
+        }
+      }
+      else
+      {
+        RDCERR("GLReplay::GetTextureData - Unsupported external texture format for remap");
+      }
+    }
+    else
+    {
+      RDCERR("GLReplay::GetTextureData - Invalid remap option for external texture");
+    }
+    return;
+  }
+
   if(texType == eGL_TEXTURE_BUFFER)
   {
     GLuint bufName = 0;
