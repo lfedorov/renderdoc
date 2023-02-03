@@ -1285,6 +1285,7 @@
   FUNC(glGetPerfQueryDataINTEL, glGetPerfQueryDataINTEL); \
   FUNC(glGetPerfQueryIdByNameINTEL, glGetPerfQueryIdByNameINTEL); \
   FUNC(glGetPerfQueryInfoINTEL, glGetPerfQueryInfoINTEL); \
+  FUNC(glEGLImageTargetTexture2DOES, glEGLImageTargetTexture2DOES); \
   FUNC(wglDXSetResourceShareHandleNV, wglDXSetResourceShareHandleNV); \
   FUNC(wglDXOpenDeviceNV, wglDXOpenDeviceNV); \
   FUNC(wglDXCloseDeviceNV, wglDXCloseDeviceNV); \
@@ -1293,7 +1294,6 @@
   FUNC(wglDXObjectAccessNV, wglDXObjectAccessNV); \
   FUNC(wglDXLockObjectsNV, wglDXLockObjectsNV); \
   FUNC(wglDXUnlockObjectsNV, wglDXUnlockObjectsNV); \
-  FUNC(glEGLImageTargetTexture2DOES, glEGLImageTargetTexture2DOES); \
 
 
 #define DefineSupportedHooks() \
@@ -2547,6 +2547,7 @@
   FuncWrapper5(void, glGetPerfQueryDataINTEL, GLuint, queryHandle, GLuint, flags, GLsizei, dataSize, void *, data, GLuint *, bytesWritten); \
   FuncWrapper2(void, glGetPerfQueryIdByNameINTEL, GLchar *, queryName, GLuint *, queryId); \
   FuncWrapper7(void, glGetPerfQueryInfoINTEL, GLuint, queryId, GLuint, queryNameLength, GLchar *, queryName, GLuint *, dataSize, GLuint *, noCounters, GLuint *, noInstances, GLuint *, capsMask); \
+  FuncWrapper2(void, glEGLImageTargetTexture2DOES, GLenum, target, GLeglImageOES, image); \
   FuncWrapper2(BOOL, wglDXSetResourceShareHandleNV, void *, dxObject, HANDLE, shareHandle); \
   FuncWrapper1(HANDLE, wglDXOpenDeviceNV, void *, dxDevice); \
   FuncWrapper1(BOOL, wglDXCloseDeviceNV, HANDLE, hDevice); \
@@ -2555,7 +2556,7 @@
   FuncWrapper2(BOOL, wglDXObjectAccessNV, HANDLE, hObject, GLenum, access); \
   FuncWrapper3(BOOL, wglDXLockObjectsNV, HANDLE, hDevice, GLint, count, HANDLE *, hObjects); \
   FuncWrapper3(BOOL, wglDXUnlockObjectsNV, HANDLE, hDevice, GLint, count, HANDLE *, hObjects); \
-  FuncWrapper2(void, glEGLImageTargetTexture2DOES, GLenum, target, GLeglImageOES, image);
+
 
 
 #define ForEachUnsupported(FUNC) \

@@ -958,6 +958,9 @@ struct GLDispatchTable
   PFNGLGETPERFQUERYIDBYNAMEINTELPROC glGetPerfQueryIdByNameINTEL;
   PFNGLGETPERFQUERYINFOINTELPROC glGetPerfQueryInfoINTEL;
 
+  // EGLImage functions
+  PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+
   // stubbed on all non-windows platforms
   PFNWGLDXSETRESOURCESHAREHANDLENVPROC wglDXSetResourceShareHandleNV;
   PFNWGLDXOPENDEVICENVPROC wglDXOpenDeviceNV;
@@ -968,8 +971,6 @@ struct GLDispatchTable
   PFNWGLDXLOCKOBJECTSNVPROC wglDXLockObjectsNV;
   PFNWGLDXUNLOCKOBJECTSNVPROC wglDXUnlockObjectsNV;
 
-  // EGLImage functions on Android
-  PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 };
 // clang-format on
 
