@@ -2654,7 +2654,6 @@ void APIENTRY _glGetTexImage(GLenum target, GLint level, const GLenum format, co
 
   PushPopFramebuffer(eGL_FRAMEBUFFER, fbo);
 
-
   GLint width = 0, height = 0, depth = 0;
   GL.glGetTexLevelParameteriv(target, level, eGL_TEXTURE_WIDTH, &width);
   GL.glGetTexLevelParameteriv(target, level, eGL_TEXTURE_HEIGHT, &height);

@@ -1,10 +1,10 @@
-#include "../gl_driver.h"
 #include "../egl_dispatch_table.h"
+#include "../gl_driver.h"
 
 rdcarray<byte> WrappedOpenGL::ReadExternalTextureData(GLuint texture)
 {
   rdcarray<byte> pixels;
-  GLuint prevTex = 0; // for any current texture unit
+  GLuint prevTex = 0;    // for any current texture unit
   GL.glGetIntegerv(eGL_TEXTURE_BINDING_EXTERNAL_OES, (GLint *)&prevTex);
   GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, texture);
 
@@ -19,7 +19,7 @@ rdcarray<byte> WrappedOpenGL::ReadExternalTextureData(GLuint texture)
   size_t size = GetByteSize(width, height, 1, GetBaseFormat(internalFormat), eGL_UNSIGNED_BYTE);
 
   pixels.resize(size);
-  // 
+  //
   // read pixels. ref: https://developer.arm.com/documentation/ka004859/1-0
   GLuint prevReadFramebuffer = 0, prevPixelPackBuffer = 0, fb = 0;
   GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&prevPixelPackBuffer);
@@ -33,7 +33,8 @@ rdcarray<byte> WrappedOpenGL::ReadExternalTextureData(GLuint texture)
   GLint prevPixelPackAlign = 0;
   GL.glGetIntegerv(eGL_PACK_ALIGNMENT, &prevPixelPackAlign);
   GL.glPixelStorei(eGL_PACK_ALIGNMENT, 1);
-  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat), eGL_UNSIGNED_BYTE, pixels.data());
+  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat), eGL_UNSIGNED_BYTE,
+                  pixels.data());
   GL.glFinish();
   GL.glPixelStorei(eGL_PACK_ALIGNMENT, prevPixelPackAlign);
   GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, prevReadFramebuffer);
@@ -51,30 +52,27 @@ EGLImageKHR WrappedOpenGL::CreateEGLImage(GLint width, GLint height, GLenum inte
   uint32_t buffer_format = 0;
   switch(internal_format)
   {
-    case eGL_RGB8:
-      buffer_format = AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM;
-      break;
-    case eGL_RGBA8:
-      buffer_format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-      break;
+    case eGL_RGB8: buffer_format = AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM; break;
+    case eGL_RGBA8: buffer_format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM; break;
     default: RDCERR("Unsupported internal format 0x%X", internal_format);
   }
   AHardwareBuffer *hardware_buffer = nullptr;
   EGLClientBuffer client_buffer = nullptr;
 
   AHardwareBuffer_Desc buffer_desc{};
-  buffer_desc.width  = width;
+  buffer_desc.width = width;
   buffer_desc.height = height;
   buffer_desc.format = buffer_format;
   buffer_desc.layers = 1;
-  buffer_desc.usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+  buffer_desc.usage =
+      AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
   int res = AHardwareBuffer_allocate(&buffer_desc, &hardware_buffer);
   RDCASSERT(res == 0);
   client_buffer = EGL.GetNativeClientBufferANDROID(hardware_buffer);
   RDCASSERT(client_buffer);
   image = EGL.CreateImageKHR(EGL.GetCurrentDisplay(), EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID,
-                                client_buffer, nullptr);
+                             client_buffer, nullptr);
   RDCASSERT(image != EGL_NO_IMAGE_KHR);
 
   ExternalTextureResources etr;
@@ -83,13 +81,13 @@ EGLImageKHR WrappedOpenGL::CreateEGLImage(GLint width, GLint height, GLenum inte
   etr.image = image;
   m_ExternalTextureResources.push_back(etr);
 
-#endif // if defined(RENDERDOC_PLATFORM_ANDROID)
+#endif    // if defined(RENDERDOC_PLATFORM_ANDROID)
   return image;
 }
 
 void WrappedOpenGL::ReleaseExternalTextureResources()
 {
-  for (auto& etr : m_ExternalTextureResources)
+  for(auto &etr : m_ExternalTextureResources)
   {
     if(etr.image != EGL_NO_IMAGE_KHR)
     {
@@ -118,15 +116,15 @@ void WrappedOpenGL::WriteExternalTexture(EGLImageKHR egl_image, const byte *pixe
     {
       texdata = &m_ExternalTextureResources[i];
       break;
-    }  
+    }
   }
   if(!texdata)
   {
     return;
   }
-  
+
   RDCASSERT(texdata->hw_buffer);
-  AHardwareBuffer_Desc hw_buf_desc {};
+  AHardwareBuffer_Desc hw_buf_desc{};
   AHardwareBuffer_describe(texdata->hw_buffer, &hw_buf_desc);
   byte *pwrite = nullptr;
   int res = AHardwareBuffer_lock(texdata->hw_buffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY, -1,
@@ -134,14 +132,14 @@ void WrappedOpenGL::WriteExternalTexture(EGLImageKHR egl_image, const byte *pixe
   RDCASSERT(res == 0);
   if(hw_buf_desc.stride == hw_buf_desc.width)
   {
-    memcpy(pwrite, pixels, size); // copy at once
+    memcpy(pwrite, pixels, size);    // copy at once
   }
-  else // copy row by row
+  else    // copy row by row
   {
     uint32_t pixel_size;
     switch(hw_buf_desc.format)
     {
-      //case AHARDWAREBUFFER_FORMAT_R8_UNORM: pixel_size = 1; break;
+      // case AHARDWAREBUFFER_FORMAT_R8_UNORM: pixel_size = 1; break;
       case AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM: pixel_size = 3; break;
       case AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM:
       case AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM: pixel_size = 4; break;
@@ -161,5 +159,5 @@ void WrappedOpenGL::WriteExternalTexture(EGLImageKHR egl_image, const byte *pixe
   }
   res = AHardwareBuffer_unlock(texdata->hw_buffer, nullptr);
   RDCASSERT(res == 0);
-#endif // if defined(RENDERDOC_PLATFORM_ANDROID)
+#endif    // if defined(RENDERDOC_PLATFORM_ANDROID)
 }

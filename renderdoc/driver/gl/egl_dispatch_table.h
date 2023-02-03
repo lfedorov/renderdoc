@@ -105,7 +105,6 @@ typedef PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC PFN_eglGetNativeClientBufferANDRO
   FUNC(DestroyImageKHR, false, true);      \
   FUNC(GetNativeClientBufferANDROID, false, true);
 
-
 struct EGLDispatchTable
 {
   // since on posix systems we need to export the functions that we're hooking, that means on replay

@@ -7131,7 +7131,7 @@ bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, 
   {
     ResourceId texId = record->GetResourceID();
     EGLImageKHR egl_image = CreateEGLImage(m_Textures[texId].width, m_Textures[texId].height,
-                                             m_Textures[texId].internalFormat);
+                                           m_Textures[texId].internalFormat);
     WriteExternalTexture(egl_image, unpackedPixels, unpackSize);
 
     if(GL.glEGLImageTargetTexture2DOES)
@@ -7198,12 +7198,6 @@ void WrappedOpenGL::glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES im
     }
   }
 }
-
-
-
-
-
-
 
 #pragma endregion
 
@@ -7319,4 +7313,5 @@ INSTANTIATE_FUNCTION_SERIALISED(void, glInvalidateTexImage, GLuint texture, GLin
 INSTANTIATE_FUNCTION_SERIALISED(void, glInvalidateTexSubImage, GLuint texture, GLint level,
                                 GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width,
                                 GLsizei height, GLsizei depth);
-INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target, GLeglImageOES image);
+INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+                                GLeglImageOES image);

@@ -674,7 +674,6 @@ public:
   rdcarray<ExternalTextureResources> m_ExternalTextureResources;
 
 public:
-
   EGLImageKHR CreateEGLImage(GLint width, GLint height, GLenum internal_format);
   rdcarray<byte> ReadExternalTextureData(GLuint texture);
   void WriteExternalTexture(EGLImageKHR egl_image, const byte *pixels, uint64_t size);

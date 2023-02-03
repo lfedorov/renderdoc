@@ -2434,8 +2434,8 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
 
   if(texType == eGL_TEXTURE_EXTERNAL_OES)
   {
-    const rdcarray<byte>& intData = texDetails.compressedData[0];
-    
+    const rdcarray<byte> &intData = texDetails.compressedData[0];
+
     if(params.remap == RemapTexture::NoRemap)
     {
       data.assign(intData);
@@ -2444,10 +2444,10 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
     {
       size_t size = width * height;
       data.resize(size * sizeof(uint32_t));
-      uint32_t* pwrite = (uint32_t*)data.data();
-      const byte* pread = (const byte*)intData.data();
+      uint32_t *pwrite = (uint32_t *)data.data();
+      const byte *pread = (const byte *)intData.data();
 
-      if(intFormat == eGL_R8) 
+      if(intFormat == eGL_R8)
       {
         while(size--)
         {
@@ -2455,11 +2455,12 @@ void GLReplay::GetTextureData(ResourceId tex, const Subresource &sub,
           pread += 1;
         }
       }
-      else if(intFormat == eGL_RGB8) 
+      else if(intFormat == eGL_RGB8)
       {
         while(size--)
         {
-          *pwrite++ = uint32_t(pread[0]) | uint32_t(pread[1]) << 8 | uint32_t(pread[2]) << 16 | 0xff000000u;
+          *pwrite++ =
+              uint32_t(pread[0]) | uint32_t(pread[1]) << 8 | uint32_t(pread[2]) << 16 | 0xff000000u;
           pread += 3;
         }
       }

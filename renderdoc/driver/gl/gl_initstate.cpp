@@ -2043,7 +2043,7 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
     }
     else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
     {
-        // do nothing
+      // do nothing
     }
     else
     {
@@ -2274,8 +2274,6 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
         }
       }
     }
-
-
   }
   else if(live.Namespace == eResProgram)
   {
