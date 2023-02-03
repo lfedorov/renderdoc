@@ -596,8 +596,6 @@ void Serialiser<SerialiserMode::Writing>::WriteStructuredFile(const SDFile &file
       scratchWriter.m_ChunkFlags = m_ChunkFlags;
     }
 
-    m_ChunkMetadata.chunkID = 0;
-
     ser->BeginChunk(chunk.metadata.chunkID, m_ChunkMetadata.length);
 
     if(chunk.metadata.flags & SDChunkFlags::OpaqueChunk)

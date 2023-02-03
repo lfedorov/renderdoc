@@ -2666,8 +2666,6 @@ void APIENTRY _glGetTexImage(GLenum target, GLint level, const GLenum format, co
 
   GLint boundTexture = 0;
   GL.glGetIntegerv(TextureBinding(target), (GLint *)&boundTexture);
-  RDCERR("_glGetTexImage current texture in target (trg = %u name=%u) (w=%u h=%u)", (uint32_t)target, (uint32_t)boundTexture,
-         (uint32_t)width, (uint32_t)height);
 
   GLuint readtex = boundTexture;
   GLuint deltex = 0;
@@ -2919,8 +2917,6 @@ void APIENTRY _glGetTexImage(GLenum target, GLint level, const GLenum format, co
               target);
     GL.glGenTextures(1, &readtex);
     GL.glBindTexture(target, readtex);
-    RDCERR("glGenTextures_11 (trg = %u name=%u) w = %u h = %u", (uint32_t)target, (uint32_t)readtex,
-           (uint32_t)width, (uint32_t)height);
 
     // allocate the texture
     GL.glTexParameteri(target, eGL_TEXTURE_MAX_LEVEL, 0);

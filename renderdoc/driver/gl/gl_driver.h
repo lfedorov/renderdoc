@@ -675,15 +675,10 @@ public:
 
 public:
 
-  bool ReadExternalTexture(GLuint texture, byte*& pixels, size_t& size);
-  void AddExternalTexture(GLuint image_index, GLint width, GLint height, GLenum internal_format);
-  void WriteExternalTexture(GLuint image_index, const byte *pixels, size_t size);
-  void ReleaseExternalTextureResources();
-
   EGLImageKHR CreateEGLImage(GLint width, GLint height, GLenum internal_format);
   rdcarray<byte> ReadExternalTextureData(GLuint texture);
-  void WriteExternalTexture2(EGLImageKHR egl_image, const byte *pixels, uint64_t size);
-
+  void WriteExternalTexture(EGLImageKHR egl_image, const byte *pixels, uint64_t size);
+  void ReleaseExternalTextureResources();
 
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
   // replay interface
@@ -2039,9 +2034,6 @@ public:
 
   void Common_glNamedBufferStorageEXT(ResourceId id, GLsizeiptr size, const void *data,
                                       GLbitfield flags);
-
-  void Common_glEGLImageTargetTexture2DOES(ResourceId id, GLenum target, GLeglImageOES image);
-
 
   void MarkReferencedWhileCapturing(GLResourceRecord *record, FrameRefType refType);
 

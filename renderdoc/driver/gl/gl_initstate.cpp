@@ -626,7 +626,7 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   state.type = details.curType;
   state.mips = 1;
 
-  if(details.internalFormat == eGL_NONE /* || details.curType == eGL_TEXTURE_EXTERNAL_OES*/)
+  if(details.internalFormat == eGL_NONE)
   {
     // textures can get here as GL_NONE if they were created and dirtied (by setting lots of
     // texture parameters) without ever having storage allocated (via glTexStorage or glTexImage).
@@ -634,55 +634,19 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   }
   else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
   {
-    RDCERR("L1F PrepareTextureInitialContents PRE glGenTextures_6 (trg = %u name=%u) (w=%u h=%u)  fmt = %u",
-        (uint32_t)details.curType, (uint32_t)res.name, (uint32_t)state.width,
-        (uint32_t)state.height, (uint32_t)state.internalformat);
-
-    RDCASSERT(1 && (GL.glGetError() == GL_NO_ERROR));
-
     // read common texture params to details
-    //GLint width = 0, height = 0, depth = 0;
     GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WIDTH,
                                     (GLint *)&state.width);
     GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_HEIGHT,
                                     (GLint *)&state.height);
-    //GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_DEPTH,
-    //                                (GLint *)&state.depth);
-   //GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_INTERNAL_FORMAT,
-    //                              (GLint *)&state.internalformat);
-    GLenum glerr = GL.glGetError();
-    RDCASSERT(2 && (glerr == GL_NO_ERROR));
-
-    RDCERR("L1F PrepareTextureInitialContents glGenTextures_6 (trg = %u name=%u) (w=%u h=%u) fmt = %u err = %u",
-          (uint32_t)details.curType, (uint32_t)res.name, (uint32_t)state.width, (uint32_t)state.height, (uint32_t)state.internalformat, (uint32_t)glerr);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_DEPTH,
+                                    (GLint *)&state.depth);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_INTERNAL_FORMAT,
+                                    (GLint *)&state.internalformat);
 
     // read ext texture to compressed data
-    {
-      /* GLenum fmt = eGL_NONE;
-      GLenum type = eGL_NONE;
-      uint64_t size = 0;
-
-      uint32_t copySlices = RDCMAX(1U, state.depth);
-      // uint32_t texDim = TextureState.dim;
-
-      fmt = GetBaseFormat(state.internalformat);
-      type = GetDataType(state.internalformat);
-      size = (uint64_t)GetByteSize(RDCMAX(1U, state.width), RDCMAX(1U, state.height),
-                                   copySlices, fmt, type);*/
-      rdcarray<byte> &extData = details.compressedData[0];
-      extData = m_Driver->ReadExternalTextureData(res.name);
-
-      /* rdcarray<byte> &cdData = details.compressedData[0];
-      byte *scratchBuf2 = nullptr;
-      size_t size2 = 0;
-      m_Driver->ReadExternalTexture(res.name, scratchBuf2, size2);
-
-      RDCASSERT(size == size2);
-      cdData.resize(size2);
-      memcpy(cdData.data(), scratchBuf2, size2);*/
-    }
-
-    //initContents.resource = GLResource(res.ContextShareGroup, eResTexture, tex);
+    rdcarray<byte> &extData = details.compressedData[0];
+    extData = m_Driver->ReadExternalTextureData(res.name);
   }
   else if(details.curType != eGL_TEXTURE_BUFFER)
   {
@@ -792,8 +756,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
         GL.glGetIntegerv(binding, (GLint *)&oldtex);
 
         GL.glGenTextures(1, &tex);
-        RDCERR("glGenTextures_6 (trg = %u name=%u) (w=%u h=%u)", (uint32_t)details.curType,
-               (uint32_t)tex, (uint32_t)details.width, (uint32_t)details.height);
         GL.glBindTexture(details.curType, tex);
 
         GL.glBindTexture(details.curType, oldtex);
@@ -1460,60 +1422,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
       }
       else if(TextureState.type == eGL_TEXTURE_EXTERNAL_OES)
       {
-        /* GLenum fmt = eGL_NONE;
-        GLenum type = eGL_NONE;
-        uint64_t size = 0;
-
-        uint32_t copySlices = RDCMAX(1U, TextureState.depth);
-        //uint32_t texDim = TextureState.dim;
-
-        fmt = GetBaseFormat(TextureState.internalformat);
-        type = GetDataType(TextureState.internalformat);
-        size = (uint64_t)GetByteSize(RDCMAX(1U, TextureState.width),
-                                     RDCMAX(1U, TextureState.height), copySlices, fmt, type);
-
-        GLuint tex = 0;
-
-        if(ser.IsWriting())
-        {
-          RDCERR("L1F Serialize write trg = %u name=%u w=%u h=%u size=%u",
-            (uint32_t)details.curType, (uint32_t)initial->resource.name,
-            (uint32_t)details.width, (uint32_t)details.height, (uint32_t)size);
-        }
-        if(IsReplayingAndReading() && !ser.IsErrored())
-        {
-          GLResource liveRes = GetLiveResource(id);
-
-           RDCERR("L1F Serialize read trg = %u name=%u w=%u h=%u size=%u",
-               (uint32_t)details.curType, (uint32_t)liveRes.name,
-            (uint32_t)details.width, (uint32_t)details.height, (uint32_t)size);
-        }
-
-        byte *scratchBuf = AllocAlignedBuffer(size);*/
-
-        //rdcarray<byte> data;
-        /* byte *scratchBuf = NULL;
-        uint64_t scratchSize = 0;
-
-        if(ser.IsWriting())
-        {
-         // tex = initial->resource.name;
-          {
-            rdcarray<byte> &etData = details.compressedData[0];
-            scratchBuf = etData.data();
-            scratchSize = etData.size();
-          }
-
-          //TextureState.texBufOffs = details.renderbufferReadTex;
-          //TextureState.texBufSize = (uint32_t)size;
-
-          //details.GetCompressedImageDataGLES(0, TextureState.type, (size_t)size, scratchBuf);
-        }
-
-        // serialise without allocating memory as we already have our scratch buf sized.
-        ser.Serialise("SubresourceContents"_lit, scratchBuf, scratchSize, SerialiserFlags::NoFlags)
-            .Important();*/
-
         rdcarray<byte> &extData = details.compressedData[0];
         uint64_t scratchSize = (uint64_t)extData.size();
         SERIALISE_ELEMENT(scratchSize);
@@ -1524,10 +1432,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
         byte *scratchBuf = extData.data();
         SERIALISE_ELEMENT_ARRAY(scratchBuf, scratchSize);
 
-
-
-
-
         // on replay, restore the data into the initial contents texture
         if(IsReplayingAndReading() && !ser.IsErrored())
         {
@@ -1537,45 +1441,17 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
           details.width = TextureState.width;
           details.height = TextureState.height;
           details.internalFormat = TextureState.internalformat;
-          //details.renderbufferReadTex = TextureState.texBufOffs;
-
-          //TextureState.texBufOffs = details.renderbufferReadTex;
-          //RDCASSERT(size == TextureState.texBufSize);
-
-          // if(IsGLES)
-          {
-            //size_t startOffs = 0;
-            details.compressedData[0].resize((size_t)scratchSize);
-            memcpy(details.compressedData[0].data(), scratchBuf, (size_t)scratchSize);
-            //details.compressedData[0].assign(scratchBuf, scratchSize);
-          }
-
-          RDCERR("L1F Serialize IsReplayingAndReading trg = %u w=%u h=%u size=%u color=%u",
-                 (uint32_t)details.curType, (uint32_t)details.width, (uint32_t)details.height,
-                 (uint32_t)scratchSize, (uint32_t) * (uint32_t *)details.compressedData[0].data());
-
-          //memset(details.compressedData[0].data(), 0xffffffff, details.compressedData[0].size());
-
-          /* m_Driver->AddExternalTexture(0, TextureState.width,
-                                       TextureState.height, TextureState.internalformat);
-          m_Driver->WriteExternalTexture(0, details.compressedData[0].data(),
-                                         details.compressedData[0].size());*/
+          details.compressedData[0].assign(scratchBuf, scratchSize);
 
           EGLImageKHR egl_image = m_Driver->CreateEGLImage(TextureState.width, TextureState.height,
                                                            TextureState.internalformat);
-          m_Driver->WriteExternalTexture2(egl_image, scratchBuf, scratchSize);
+          m_Driver->WriteExternalTexture(egl_image, scratchBuf, scratchSize);
 
           GLResource liveRes = GetLiveResource(id);
           GL.glBindTexture(TextureState.type, liveRes.name);
           // associate GL texture and EGLimage
           GL.glEGLImageTargetTexture2DOES(TextureState.type, egl_image);
         }
-
-        // free our scratch buffer
-        //FreeAlignedBuffer(scratchBuf);
-
-        //initContents.resource = TextureRes(m_Driver->GetCtx(), tex);
-        
       }
       else
       {
@@ -1726,7 +1602,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
         if(IsReplayingAndReading() && !ser.IsErrored())
         {
           GL.glGenTextures(1, &tex);
-          RDCERR("glGenTextures_7 (trg = %u name=%u)", (uint32_t)TextureState.type, (uint32_t)tex);
           GL.glBindTexture(TextureState.type, tex);
 
           // create MSAA texture we'll use for applying
@@ -1741,8 +1616,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
             msaaTex = tex;
 
             GL.glGenTextures(1, &tex);
-            RDCERR("glGenTextures_8 (trg = %u name=%u)", (uint32_t)eGL_TEXTURE_2D_ARRAY,
-                   (uint32_t)tex);
             GL.glBindTexture(eGL_TEXTURE_2D_ARRAY, tex);
 
             copySlices = RDCMAX(1U, TextureState.depth) * TextureState.samples;
