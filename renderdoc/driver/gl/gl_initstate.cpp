@@ -634,15 +634,17 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   }
   else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
   {
-    // read common texture params to details
-    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WIDTH,
-                                    (GLint *)&state.width);
-    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_HEIGHT,
-                                    (GLint *)&state.height);
-    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_DEPTH,
-                                    (GLint *)&state.depth);
-    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_INTERNAL_FORMAT,
-                                    (GLint *)&state.internalformat);
+    GLuint oldtex = 0;
+    GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&oldtex);
+    GL.glBindTexture(details.curType, res.name);
+
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_WIDTH, (GLint *)&state.width);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_HEIGHT, (GLint *)&state.height);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_DEPTH, (GLint *)&state.depth);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_INTERNAL_FORMAT,
+                                (GLint *)&state.internalformat);
+
+    GL.glBindTexture(details.curType, oldtex);
 
     // read ext texture to compressed data
     rdcarray<byte> &extData = details.compressedData[0];
