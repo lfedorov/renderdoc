@@ -2555,11 +2555,7 @@
   FuncWrapper2(BOOL, wglDXObjectAccessNV, HANDLE, hObject, GLenum, access); \
   FuncWrapper3(BOOL, wglDXLockObjectsNV, HANDLE, hDevice, GLint, count, HANDLE *, hObjects); \
   FuncWrapper3(BOOL, wglDXUnlockObjectsNV, HANDLE, hDevice, GLint, count, HANDLE *, hObjects); \
-  /*FuncWrapper2(void, glEGLImageTargetRenderbufferStorageOES, GLenum, target, GLeglImageOES, image); \
-  FuncWrapper3(void, glEGLImageTargetTexStorageEXT, GLenum, target, GLeglImageOES, image, const GLint*, attrib_list);*/ \
-  FuncWrapper2(void, glEGLImageTargetTexture2DOES, GLenum, target, GLeglImageOES, image); \
-  /*FuncWrapper3(void, glEGLImageTargetTextureStorageEXT, GLuint, texture, GLeglImageOES, image, const GLint*, attrib_list);*/ \
-
+  FuncWrapper2(void, glEGLImageTargetTexture2DOES, GLenum, target, GLeglImageOES, image);
 
 
 #define ForEachUnsupported(FUNC) \
