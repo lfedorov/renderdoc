@@ -49,11 +49,7 @@ typedef EGLSurface(EGLAPIENTRY *PFN_eglCreateWindowSurface)(EGLDisplay dpy, EGLC
 typedef EGLSurface(EGLAPIENTRY *PFN_eglCreatePlatformWindowSurface)(EGLDisplay dpy, EGLConfig config,
                                                                     void *native_window,
                                                                     const EGLAttrib *attrib_list);
-/*typedef EGLSurface(EGLAPIENTRY *PFN_eglCreateImageKHR)(EGLDisplay dpy, EGLContext ctx, EGLenum target,
-                                                    EGLClientBuffer buffer,
-                                                    const EGLAttrib *attrib_list);
-typedef EGLBoolean(EGLAPIENTRY *PFN_eglDestroyImageKHR)(EGLDisplay dpy, EGLImageKHR image);
-*/typedef EGLBoolean(EGLAPIENTRY *PFN_eglChooseConfig)(EGLDisplay dpy, const EGLint *attrib_list,
+typedef EGLBoolean(EGLAPIENTRY *PFN_eglChooseConfig)(EGLDisplay dpy, const EGLint *attrib_list,
                                                      EGLConfig *configs, EGLint config_size,
                                                      EGLint *num_config);
 typedef __eglMustCastToProperFunctionPointerType(EGLAPIENTRY *PFN_eglGetProcAddress)(
@@ -81,8 +77,6 @@ typedef PFNEGLSWAPBUFFERSWITHDAMAGEKHRPROC PFN_eglSwapBuffersWithDamageKHR;
   FUNC(DestroyContext, false, true);               \
   FUNC(CreateWindowSurface, false, true);          \
   FUNC(CreatePlatformWindowSurface, false, false); \
-  /*FUNC(CreateImageKHR, false, true);               \
-  FUNC(DestroyImageKHR, false, true);*/              \
   FUNC(MakeCurrent, false, true);                  \
   FUNC(SwapBuffers, false, true);                  \
   FUNC(PostSubBufferNV, true, false);              \

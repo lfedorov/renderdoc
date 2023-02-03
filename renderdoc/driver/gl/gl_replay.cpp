@@ -613,8 +613,6 @@ void GLReplay::CacheTexture(ResourceId id)
       tex.width = uint32_t(tex.byteSize / RDCMAX(1, tex.format.compByteWidth * tex.format.compCount));
     }
 
-    RDCERR("m_CachedTextures1 %u %u %u %u", tex.width, tex.height, tex.depth, tex.byteSize);
-
     m_CachedTextures[id] = tex;
     return;
   }
@@ -1349,7 +1347,7 @@ void GLReplay::SavePipelineState(uint32_t eventId)
 
         GLenum levelQueryType =
             target == eGL_TEXTURE_CUBE_MAP ? eGL_TEXTURE_CUBE_MAP_POSITIVE_X : target;
-        GLenum fmt = target == eGL_TEXTURE_EXTERNAL_OES ? eGL_RGBA : eGL_NONE;
+        GLenum fmt = eGL_NONE;
         drv.glGetTexLevelParameteriv(levelQueryType, 0, eGL_TEXTURE_INTERNAL_FORMAT, (GLint *)&fmt);
         if(IsDepthStencilFormat(fmt))
         {

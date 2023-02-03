@@ -2240,9 +2240,6 @@ enum class GLChunk : uint32_t
   glFlushMappedBufferRangeEXT,
 
   glEGLImageTargetTexture2DOES,
-  //glEGLImageTargetRenderbufferStorageOES,
-  //glEGLImageTargetTexStorageEXT,
-  //glEGLImageTargetTextureStorageEXT,
 
   Max,
 };

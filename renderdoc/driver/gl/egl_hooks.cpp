@@ -441,41 +441,6 @@ HOOK_EXPORT EGLSurface EGLAPIENTRY eglCreatePlatformWindowSurface_renderdoc_hook
   return ret;
 }
 
-/*HOOK_EXPORT EGLImage EGLAPIENTRY eglCreateImageKHR_renderdoc_hooked(EGLDisplay dpy, EGLContext ctx,
-                                                                 EGLenum target,
-                                                                 EGLClientBuffer buffer,
-                                                                 const EGLAttrib *attrib_list)
-{
-  if(RenderDoc::Inst().IsReplayApp())
-  {
-    if(!EGL.CreateImageKHR)
-      EGL.PopulateForReplay();
-
-    return EGL.CreateImageKHR(dpy, ctx, target, buffer, attrib_list);
-  }
-
-  EnsureRealLibraryLoaded();
-
-  EGLImage ret = EGL.CreateImageKHR(dpy, ctx, target, buffer, attrib_list);
-
-  if(ret)
-  {
-    SCOPED_LOCK(glLock);
-
-    // spec guarantees that we're using the same window system as the display
-    //eglhook.windows[ret] = {eglhook.displays[dpy].system, native_window};
-  }
-
-  return ret;
-}
-
-
-HOOK_EXPORT EGLBoolean EGLAPIENTRY eglDestroyImageKHR_renderdoc_hooked(EGLDisplay dpy, EGLImageKHR image)
-{
-  EGLBoolean ret = EGL.DestroyImageKHR(dpy, image);
-  return ret;
-}*/
-
 HOOK_EXPORT EGLBoolean EGLAPIENTRY eglMakeCurrent_renderdoc_hooked(EGLDisplay display,
                                                                    EGLSurface draw, EGLSurface read,
                                                                    EGLContext ctx)
@@ -776,18 +741,6 @@ HOOK_EXPORT EGLSurface EGLAPIENTRY eglCreatePlatformWindowSurface(EGLDisplay dpy
   return eglCreatePlatformWindowSurface_renderdoc_hooked(dpy, config, native_window, attrib_list);
 }
 
-/*HOOK_EXPORT EGLImage EGLAPIENTRY eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
-               EGLClientBuffer buffer, const EGLAttrib * attrib_list)
-{
-  return eglCreateImageKHR_renderdoc_hooked(dpy, ctx, target, buffer, attrib_list);
-}
-
-HOOK_EXPORT EGLBoolean EGLAPIENTRY eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR image)
-{
-  return eglDestroyImageKHR_renderdoc_hooked(dpy, image);
-}*/
-
-
 HOOK_EXPORT EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay display, EGLSurface draw,
                                                   EGLSurface read, EGLContext ctx)
 {
@@ -946,10 +899,8 @@ EGL_PASSTHRU_4(EGLint, eglClientWaitSync, EGLDisplay, dpy, EGLSync, sync, EGLint
                timeout)
 EGL_PASSTHRU_4(EGLBoolean, eglGetSyncAttrib, EGLDisplay, dpy, EGLSync, sync, EGLint, attribute,
                EGLAttrib *, value)
-//
 EGL_PASSTHRU_5(EGLImage, eglCreateImage, EGLDisplay, dpy, EGLContext, ctx, EGLenum, target,
                EGLClientBuffer, buffer, const EGLAttrib *, attrib_list)
-//
 EGL_PASSTHRU_2(EGLBoolean, eglDestroyImage, EGLDisplay, dpy, EGLImage, image)
 EGL_PASSTHRU_4(EGLSurface, eglCreatePlatformPixmapSurface, EGLDisplay, dpy, EGLConfig, config,
                void *, native_pixmap, const EGLAttrib *, attrib_list)

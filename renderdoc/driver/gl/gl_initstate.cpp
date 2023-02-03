@@ -1402,8 +1402,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
       TextureState = initial->tex;
 
     // serialise the texture metadata which was fetched during state preparation
-   
-    //if(TextureState.type != eGL_TEXTURE_EXTERNAL_OES)
     SERIALISE_ELEMENT(TextureState);
 
     // only continue with serialising the contents if the format is valid (storage allocated).

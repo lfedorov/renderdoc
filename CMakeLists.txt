@@ -63,7 +63,6 @@ if(BUILD_ANDROID)
 
     # Set default API level to 21 if not configured explicitly
     if(NOT ANDROID_PLATFORM)
-        #set(ANDROID_PLATFORM "android-21")
         set(ANDROID_PLATFORM "android-26")
     endif()
     
