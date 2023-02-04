@@ -648,7 +648,7 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
 
     // read ext texture to compressed data
     rdcarray<byte> &extData = details.compressedData[0];
-    extData = m_Driver->ReadExternalTextureData(res.name);
+    extData = m_Driver->GetExternalTextureData(res.name);
   }
   else if(details.curType != eGL_TEXTURE_BUFFER)
   {
@@ -1443,14 +1443,18 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
           details.internalFormat = TextureState.internalformat;
           details.compressedData[0].assign(scratchBuf, scratchSize);
 
-          EGLImageKHR egl_image = m_Driver->CreateEGLImage(TextureState.width, TextureState.height,
-                                                           TextureState.internalformat);
-          m_Driver->WriteExternalTexture(egl_image, scratchBuf, scratchSize);
-
+          GLeglImageOES eglImage =
+              m_Driver->CreateEGLImage(TextureState.width, TextureState.height,
+                                       TextureState.internalformat, scratchBuf, scratchSize);
           GLResource liveRes = GetLiveResource(id);
+
+          GLuint prevtex = 0;
+          GL.glGetIntegerv(TextureBinding(TextureState.type), (GLint *)&prevtex);
+
           GL.glBindTexture(TextureState.type, liveRes.name);
           // associate GL texture and EGLimage
-          GL.glEGLImageTargetTexture2DOES(TextureState.type, egl_image);
+          GL.glEGLImageTargetTexture2DOES(TextureState.type, eglImage);
+          GL.glBindTexture(TextureState.type, prevtex);
         }
       }
       else

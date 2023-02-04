@@ -663,22 +663,15 @@ public:
 
   void RegisterDebugCallback();
 
-  struct ExternalTextureResources
-  {
-#if defined(RENDERDOC_PLATFORM_ANDROID)
-    AHardwareBuffer *hw_buffer = nullptr;
+#if defined(RENDERDOC_SUPPORT_EGL)
+  rdcarray<rdcpair<GLeglImageOES, AHardwareBuffer *>> m_ExternalTextureResources;
+  GLeglImageOES CreateEGLImage(GLint width, GLint height, GLenum internal_format,
+                               const byte *pixels, uint64_t size);
+  rdcarray<byte> GetExternalTextureData(GLuint texture);
+  void ReleaseExternalTextureResources();
 #endif
-    EGLClientBuffer cl_buffer = nullptr;
-    EGLImageKHR image = EGL_NO_IMAGE_KHR;
-  };
-  rdcarray<ExternalTextureResources> m_ExternalTextureResources;
 
 public:
-  EGLImageKHR CreateEGLImage(GLint width, GLint height, GLenum internal_format);
-  rdcarray<byte> ReadExternalTextureData(GLuint texture);
-  void WriteExternalTexture(EGLImageKHR egl_image, const byte *pixels, uint64_t size);
-  void ReleaseExternalTextureResources();
-
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
   // replay interface
   void Initialise(GLInitParams &params, uint64_t sectionVersion, const ReplayOptions &opts);

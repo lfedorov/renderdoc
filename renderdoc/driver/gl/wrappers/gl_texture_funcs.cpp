@@ -7114,7 +7114,7 @@ bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, 
   rdcarray<byte> data;
   if(ser.IsWriting())
   {
-    data = ReadExternalTextureData(record->Resource.name);
+    data = GetExternalTextureData(record->Resource.name);
   }
   uint64_t unpackSize = (uint64_t)data.size();
   SERIALISE_ELEMENT(unpackSize);
@@ -7130,13 +7130,12 @@ bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, 
   if(IsReplayingAndReading())
   {
     ResourceId texId = record->GetResourceID();
-    EGLImageKHR egl_image = CreateEGLImage(m_Textures[texId].width, m_Textures[texId].height,
-                                           m_Textures[texId].internalFormat);
-    WriteExternalTexture(egl_image, unpackedPixels, unpackSize);
-
+    GLeglImageOES eglImage =
+        CreateEGLImage(m_Textures[texId].width, m_Textures[texId].height,
+                       m_Textures[texId].internalFormat, unpackedPixels, unpackSize);
     if(GL.glEGLImageTargetTexture2DOES)
     {
-      GL.glEGLImageTargetTexture2DOES(target, egl_image);
+      GL.glEGLImageTargetTexture2DOES(target, eglImage);
     }
     AddResourceInitChunk(texture);
   }
