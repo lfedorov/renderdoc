@@ -663,7 +663,7 @@ public:
 
   void RegisterDebugCallback();
 
-  rdcarray<rdcpair<GLeglImageOES, AHardwareBuffer *>> m_ExternalTextureResources;
+  rdcarray<rdcpair<GLeglImageOES, struct AHardwareBuffer *>> m_ExternalTextureResources;
   GLeglImageOES CreateEGLImage(GLint width, GLint height, GLenum internal_format,
                                const byte *pixels, uint64_t size);
   rdcarray<byte> GetExternalTextureData(GLuint texture);
