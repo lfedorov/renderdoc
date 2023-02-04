@@ -1,4 +1,7 @@
+
+#if defined(RENDERDOC_SUPPORT_EGL)
 #include "../egl_dispatch_table.h"
+#endif
 #include "../gl_driver.h"
 
 rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
@@ -47,7 +50,7 @@ rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
 GLeglImageOES WrappedOpenGL::CreateEGLImage(GLint width, GLint height, GLenum internalFormat,
                                             const byte *pixels, uint64_t size)
 {
-  GLeglImageOES image = EGL_NO_IMAGE_KHR;
+  GLeglImageOES image = nullptr;
 
 #if defined(RENDERDOC_PLATFORM_ANDROID)
   uint32_t bufferFormat = 0;
@@ -124,10 +127,12 @@ void WrappedOpenGL::ReleaseExternalTextureResources()
   for(auto &etr : m_ExternalTextureResources)
   {
     GLeglImageOES image = etr.first;
+#if defined(RENDERDOC_SUPPORT_EGL)
     if(image && EGL.DestroyImageKHR)
     {
       EGL.DestroyImageKHR(eglGetCurrentDisplay(), image);
     }
+#endif
 #if defined(RENDERDOC_PLATFORM_ANDROID)
     AHardwareBuffer *hardwareBuffer = etr.second;
     if(hardwareBuffer)

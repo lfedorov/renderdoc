@@ -663,13 +663,11 @@ public:
 
   void RegisterDebugCallback();
 
-#if defined(RENDERDOC_SUPPORT_EGL)
   rdcarray<rdcpair<GLeglImageOES, AHardwareBuffer *>> m_ExternalTextureResources;
   GLeglImageOES CreateEGLImage(GLint width, GLint height, GLenum internal_format,
                                const byte *pixels, uint64_t size);
   rdcarray<byte> GetExternalTextureData(GLuint texture);
   void ReleaseExternalTextureResources();
-#endif
 
 public:
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
