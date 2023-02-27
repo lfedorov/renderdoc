@@ -821,6 +821,7 @@ public:
           dimension(0),
           emulated(false),
           view(false),
+          external(false),
           width(0),
           height(0),
           depth(0),
@@ -837,7 +838,7 @@ public:
     GLResource resource;
     GLenum curType;
     GLint dimension;
-    bool emulated, view;
+    bool emulated, view, external;
     GLint width, height, depth, samples;
     TextureCategory creationFlags;
     GLenum internalFormat;
@@ -2570,8 +2571,16 @@ public:
                                 GLuint queryNameLength, GLchar *queryName, GLuint *dataSize,
                                 GLuint *noCounters, GLuint *noInstances, GLuint *capsMask);
 
-  IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
-                                GLeglImageOES image);
+  //IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+  //                              GLeglImageOES image);
+  //IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLResource Resource,
+  //                              GLeglImageOES image);
+
+  template <typename SerialiserType>
+  bool Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLResource Resource,
+                                              GLenum target, GLeglImageOES image);
+  void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image);
+
 };
 
 class ScopedDebugContext

@@ -501,6 +501,8 @@ void WrappedOpenGL::BuildGLESExtensions()
   m_GLESExtensions.push_back("GL_OES_depth_texture_cube_map");
   m_GLESExtensions.push_back("GL_OES_draw_buffers_indexed");
   m_GLESExtensions.push_back("GL_OES_draw_elements_base_vertex");
+  m_GLESExtensions.push_back("GL_OES_EGL_image_external");
+  m_GLESExtensions.push_back("GL_OES_EGL_image_external_essl3");
   m_GLESExtensions.push_back("GL_OES_element_index_uint");
   m_GLESExtensions.push_back("GL_OES_fbo_render_mipmap");
   m_GLESExtensions.push_back("GL_OES_framebuffer_object");
@@ -540,6 +542,8 @@ void WrappedOpenGL::BuildGLESExtensions()
   // advertise EGL extensions in the gl ext string, just in case anyone is checking it for
   // this way.
   m_GLESExtensions.push_back("EGL_KHR_create_context");
+  m_GLESExtensions.push_back("EGL_KHR_image");
+  m_GLESExtensions.push_back("EGL_KHR_image_base");
   m_GLESExtensions.push_back("EGL_KHR_surfaceless_context");
 
   // we'll be sorting the implementation extension array, so make sure the
@@ -579,8 +583,8 @@ void WrappedOpenGL::BuildGLESExtensions()
   * GL_OES_compressed_paletted_texture
   * GL_OES_draw_texture
   * GL_OES_EGL_image
-  * GL_OES_EGL_image_external
-  * GL_OES_EGL_image_external_essl3
+  // * GL_OES_EGL_image_external
+  // * GL_OES_EGL_image_external_essl3
   * GL_OES_EGL_sync
   * GL_OES_extended_matrix_palette
   * GL_OES_fixed_point
@@ -778,6 +782,9 @@ void WrappedOpenGL::CreateReplayBackbuffer(const GLInitParams &params, ResourceI
   if(params.multiSamples > 1)
     target = eGL_TEXTURE_2D_MULTISAMPLE;
 
+  GLuint oldtex = 0;
+  GL.glGetIntegerv(TextureBinding(target), (GLint *)&oldtex);
+
   drv.glGenTextures(1, &col);
   drv.glBindTexture(target, col);
 
@@ -920,6 +927,7 @@ void WrappedOpenGL::CreateReplayBackbuffer(const GLInitParams &params, ResourceI
     }
   }
 
+  GL.glBindTexture(target, oldtex);
   GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, unpackbuf);
 }
 
@@ -4831,7 +4839,8 @@ bool WrappedOpenGL::ProcessChunk(ReadSerialiser &ser, GLChunk chunk)
       return Serialise_glGetQueryBufferObjectuiv(ser, 0, 0, eGL_NONE, 0);
 
     case GLChunk::glEGLImageTargetTexture2DOES:
-      return Serialise_glEGLImageTargetTexture2DOES(ser, eGL_NONE, NULL);
+      return Serialise_glEGLImageTargetTexture2DOES(ser, GLResource(MakeNullResource), eGL_NONE,
+                                                    GLeglImageOES(NULL));
 
     // these functions are not currently serialised - they do nothing on replay and are not
     // serialised for information (it would be harmless and perhaps useful for the user to see

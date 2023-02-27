@@ -43,9 +43,14 @@ rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
                               (GLint *)&internalFormat);
   GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, prevTex);
 
-  size_t size = GetByteSize(width, height, 1, GetBaseFormat(internalFormat), eGL_UNSIGNED_BYTE);
+
+  size_t size = GetByteSize(width, height, 1, GetBaseFormat(internalFormat),
+                            GetDataType(internalFormat) /* eGL_UNSIGNED_BYTE*/);
 
   pixels.resize(size);
+
+  RDCERR("L1F GET name %d, w %d, h %d, size (%d), format = %d", texture, width, height, size,
+         internalFormat);
 
   // read pixels. ref: https://developer.arm.com/documentation/ka004859/1-0
   GLuint prevReadFramebuffer = 0, prevPixelPackBuffer = 0, fb = 0;
@@ -57,16 +62,31 @@ rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
   GL.glFramebufferTexture2D(eGL_READ_FRAMEBUFFER, eGL_COLOR_ATTACHMENT0, eGL_TEXTURE_EXTERNAL_OES,
                             texture, 0);
 
+  /*bool oldFBOsrgb = false;
+  if(HasExt[EXT_framebuffer_sRGB])
+  {
+    oldFBOsrgb = GL.glIsEnabled(eGL_FRAMEBUFFER_SRGB) == GL_TRUE;
+    GL.glEnable(eGL_FRAMEBUFFER_SRGB);
+  }*/
+
   GLint prevPixelPackAlign = 0;
   GL.glGetIntegerv(eGL_PACK_ALIGNMENT, &prevPixelPackAlign);
   GL.glPixelStorei(eGL_PACK_ALIGNMENT, 1);
-  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat), eGL_UNSIGNED_BYTE,
+  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat),
+                  GetDataType(internalFormat) /* eGL_UNSIGNED_BYTE*/,
                   pixels.data());
+  GL.glFlush();
   GL.glFinish();
   GL.glPixelStorei(eGL_PACK_ALIGNMENT, prevPixelPackAlign);
+
+  /*if(HasExt[EXT_framebuffer_sRGB] && !oldFBOsrgb)
+    GL.glDisable(eGL_FRAMEBUFFER_SRGB);*/
+
   GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, prevReadFramebuffer);
   GL.glDeleteFramebuffers(1, &fb);
   GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, prevPixelPackBuffer);
+
+  RDCASSERT(GL.glGetError() == eGL_NONE);
 
   return pixels;
 }

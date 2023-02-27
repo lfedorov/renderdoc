@@ -626,6 +626,9 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   state.type = details.curType;
   state.mips = 1;
 
+  RDCLOG("L1F PrepareTextureInitialContents name %d, w %d, h = %d, curType = %d, external %d",
+         res.name, details.width, details.height, details.curType, int(details.external));
+
   if(details.internalFormat == eGL_NONE)
   {
     // textures can get here as GL_NONE if they were created and dirtied (by setting lots of
@@ -634,6 +637,12 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   }
   else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
   {
+    //RDCASSERT(false);
+
+    //  RDCERR("L1F PrepareTextureInitialContents name %d, w %d, h = %d, curType = %d", res.name,
+    //       details.width, details.height, details.curType);
+
+
     GLuint oldtex = 0;
     GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&oldtex);
     GL.glBindTexture(details.curType, res.name);
@@ -644,11 +653,112 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
     GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_INTERNAL_FORMAT,
                                 (GLint *)&state.internalformat);
 
+     if(HasExt[EXT_texture_sRGB_decode])
+      GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_SRGB_DECODE_EXT,
+                                    (GLint *)&state.srgbDecode);
+    else
+      state.srgbDecode = eGL_DECODE_EXT;    // eGL_DECODE_EXT;
+
+
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_COMPARE_FUNC,
+                                  (GLint *)&state.compareFunc);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_COMPARE_MODE,
+                                  (GLint *)&state.compareMode);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_MIN_FILTER,
+                                  (GLint *)&state.minFilter);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_MAG_FILTER,
+                                  (GLint *)&state.magFilter);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_R,
+                                  (GLint *)&state.wrap[0]);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_S,
+                                  (GLint *)&state.wrap[1]);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_T,
+                                  (GLint *)&state.wrap[2]);
+    GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MIN_LOD, &state.minLod);
+    GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MAX_LOD, &state.maxLod);
+
+
+    if(HasExt[ARB_texture_swizzle] || HasExt[EXT_texture_swizzle])
+    {
+      GetTextureSwizzle(res.name, details.curType, state.swizzle);
+    }
+    else
+    {
+      state.swizzle[0] = eGL_RED;
+      state.swizzle[1] = eGL_GREEN;
+      state.swizzle[2] = eGL_BLUE;
+      state.swizzle[3] = eGL_ALPHA;
+    }
+
+    if(HasExt[ARB_texture_filter_anisotropic])
+      GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MAX_ANISOTROPY,
+                                    &state.maxAniso);
+    else
+      state.maxAniso = 1.0f;
+
     GL.glBindTexture(details.curType, oldtex);
 
     // read ext texture to compressed data
     rdcarray<byte> &extData = details.compressedData[0];
     extData = m_Driver->GetExternalTextureData(res.name);
+
+    state.type = eGL_TEXTURE_2D; // save this texture as just 2d data
+
+
+    // copy data to init state texture
+    GLuint tex = 0;
+    {
+      GLenum target = eGL_TEXTURE_2D;
+
+      GLuint ppb = 0, pub = 0;
+      PixelPackState pack;
+      PixelUnpackState unpack;
+
+      // save and restore pixel pack/unpack state. We only need one or the other but for clarity we
+      // push and pop both always.
+      //if(ser.IsWriting() || !IsStructuredExporting(m_State))
+      {
+        GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&ppb);
+        GL.glGetIntegerv(eGL_PIXEL_UNPACK_BUFFER_BINDING, (GLint *)&pub);
+        GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, 0);
+        GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, 0);
+
+        pack.Fetch(false);
+        unpack.Fetch(false);
+
+        ResetPixelPackState(false, 1);
+        ResetPixelUnpackState(false, 1);
+      }
+
+      GL.glGenTextures(1, &tex);
+
+      GLuint prevtex = 0;
+      GL.glGetIntegerv(TextureBinding(target), (GLint *)&prevtex);
+      GL.glBindTexture(target, tex);
+
+      GLenum fmt = GetBaseFormat(details.internalFormat);
+      GLenum type = GetDataType(details.internalFormat);
+
+      GL.glTexImage2D(target, 0, details.internalFormat, details.width, details.height, 0, fmt,
+                      type, extData.data());
+
+
+      // set data as simple 2d texture
+      //GL.glTextureSubImage2DEXT(tex, target, 0, 0, 0, details.width, details.height, fmt, type,
+      //                          extData.data());
+
+      // restore pixel (un)packing state
+      //if(/* ser.IsWriting() ||*/ !IsStructuredExporting(m_State))
+      {
+        GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, ppb);
+        GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
+        pack.Apply(false);
+        unpack.Apply(false);
+      }
+      GL.glBindTexture(target, prevtex);
+    }
+
+    initContents.resource = GLResource(res.ContextShareGroup, eResTexture, tex);
   }
   else if(details.curType != eGL_TEXTURE_BUFFER)
   {
@@ -1414,6 +1524,24 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
                                                 ? m_Driver->m_Textures[id]
                                                 : m_Driver->m_Textures[GetLiveID(id)];
 
+      if(!IsStructuredExporting(m_State))
+      {
+        if(ser.IsReading())
+        {
+          GLResource liveRes = GetLiveResource(id);
+
+          RDCLOG("L1F Serialise_InitialState READ  live res name %d, w %d, h = %d, curType = %d",
+                 int(liveRes.name), int(details.width), int(details.height), int(details.curType));
+        }
+        else
+        {
+          RDCLOG(
+              "L1F Serialise_InitialState WRITE  initial res name %d, w %d, h = %d, curType = %d",
+              initial->resource.name, details.width, details.height, details.curType);
+        }
+      }
+
+
       if(TextureState.type == eGL_TEXTURE_BUFFER || TextureState.isView)
       {
         // no contents to copy for texture buffer (it's copied under the buffer)
@@ -1422,7 +1550,8 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
       }
       else if(TextureState.type == eGL_TEXTURE_EXTERNAL_OES)
       {
-        rdcarray<byte> &extData = details.compressedData[0];
+        RDCASSERT(false);
+        /* rdcarray<byte> &extData = details.compressedData[0];
         uint64_t scratchSize = (uint64_t)extData.size();
         SERIALISE_ELEMENT(scratchSize);
         if(ser.IsReading())
@@ -1455,7 +1584,7 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
           // associate GL texture and EGLimage
           GL.glEGLImageTargetTexture2DOES(TextureState.type, eglImage);
           GL.glBindTexture(TextureState.type, prevtex);
-        }
+        }*/
       }
       else
       {
@@ -1780,6 +1909,25 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
             }
           }
 
+          /*if(!IsStructuredExporting(m_State) && !ser.IsErrored())
+          {
+            GLuint prevtex2 = 0;
+            GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&prevtex2);
+            GL.glBindTexture(details.curType, tex);
+
+            rdcarray<byte> data2;
+            data2.resize(1024*1024);
+            memset(data2.data(), 0, 1024 * 1024);
+            // get pixl from tex
+            // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
+            // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
+            GL.glGetTexImage(eGL_TEXTURE_2D, 0, fmt, type, data2.data());
+            static int a = 0;
+            a++;
+
+            GL.glBindTexture(details.curType, prevtex2);
+          }*/
+
           // free our scratch buffer
           FreeAlignedBuffer(scratchBuf);
         }
@@ -1802,6 +1950,7 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
           GL.glDeleteTextures(1, &tex);
           tex = msaaTex;
         }
+
 
         initContents.resource = TextureRes(m_Driver->GetCtx(), tex);
       }
@@ -2006,6 +2155,10 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
 
     const TextureStateInitialData &state = initial.tex;
 
+    
+    RDCLOG("L1F Applye_InitialState live res name %d, w %d, h = %d, curType = %d", int(live.name),
+           int(details.width), int(details.height), int(details.curType));
+
     if(details.curType == eGL_TEXTURE_BUFFER)
     {
       GLuint buffer = state.texBuffer.name;
@@ -2048,6 +2201,7 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
     else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
     {
       // do nothing
+      RDCASSERT(false);
     }
     else
     {
@@ -2202,9 +2356,34 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
                 glEmulate::_glCopyImageSubData(tex, details.curType, i, 0, 0, 0, live.name,
                                                details.curType, i, 0, 0, 0, w, h, d);
               else
+              {
                 GL.glCopyImageSubData(tex, details.curType, i, 0, 0, 0, live.name, details.curType,
                                       i, 0, 0, 0, w, h, d);
+              }
             }
+
+
+           /*{
+              GLuint prevtex = 0;
+              GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&prevtex);
+              GL.glBindTexture(details.curType, live.name);
+
+              rdcarray<byte> data2;
+              data2.resize(1024 * 1024);
+              memset(data2.data(), 0, 1024 * 1024);
+
+              GLenum fmt = GetBaseFormat(details.internalFormat);
+              GLenum type = GetDataType(details.internalFormat);
+              // get pixl from tex
+              // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
+              // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
+              GL.glGetTexImage(eGL_TEXTURE_2D, 0, fmt, type, data2.data());
+              static int a = 0;
+              a++;
+
+              GL.glBindTexture(details.curType, prevtex);
+            }*/
+
           }
         }
 

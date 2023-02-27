@@ -783,9 +783,18 @@ void GLRenderState::FetchState(WrappedOpenGL *driver)
       TexCubeArray[i].name = 0;
 
     if(HasExt[OES_EGL_image_external])
+    {
       GL.glGetIntegerv(eGL_TEXTURE_BINDING_EXTERNAL_OES, (GLint *)&TexExternal[i].name);
+      if(TexExternal[i].name)
+      {
+        Tex2D[i].name = TexExternal[i].name;
+        TexExternal[i].name = 0;
+      }
+    }
     else
+    {
       TexExternal[i].name = 0;
+    }
 
     if(HasExt[ARB_sampler_objects])
       GL.glGetIntegerv(eGL_SAMPLER_BINDING, (GLint *)&Samplers[i].name);

@@ -249,9 +249,16 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
 
   SERIALISE_CHECK_READ_ERRORS();
 
+  RDCLOG("L1F Serialise_glBindTexture IN ctx=%p", GetCtx().ctx);
+
   if(IsReplayingAndReading())
   {
-    GL.glBindTexture(target, texture.name);
+    GLenum emulTarget = (target == eGL_TEXTURE_EXTERNAL_OES) ? eGL_TEXTURE_2D : target;
+
+    GL.glBindTexture(emulTarget, texture.name);
+
+    RDCLOG("L1F Serialise_glBindTexture ctx=%p, target %d, texture %d", GetCtx().ctx,
+           int(emulTarget), texture.name);
 
     if(IsLoading(m_State) && texture.name)
     {
@@ -260,6 +267,11 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
       if(tex.curType == eGL_NONE)
       {
         tex.curType = TextureTarget(target);
+        if(tex.curType == eGL_TEXTURE_EXTERNAL_OES)
+        {
+          tex.curType = eGL_TEXTURE_2D;
+        }
+        tex.external = (target == eGL_TEXTURE_EXTERNAL_OES) ? true : false;
         AddResourceInitChunk(texture);
       }
       tex.creationFlags |= TextureCategory::ShaderRead;
@@ -272,6 +284,8 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
 void WrappedOpenGL::glBindTexture(GLenum target, GLuint texture)
 {
   SERIALISE_TIME_CALL(GL.glBindTexture(target, texture));
+
+  //RDCLOG("L1F GL.glBindTexture ctx=%p  target %d, texture %d", GetCtx().ctx, int(target), texture);
 
   if(IsActiveCapturing(m_State))
   {
@@ -308,6 +322,10 @@ void WrappedOpenGL::glBindTexture(GLenum target, GLuint texture)
     }
 
     cd.SetActiveTexRecord(target, r);
+    /* if(target == eGL_TEXTURE_EXTERNAL_OES)
+    {
+      cd.SetActiveTexRecord(eGL_TEXTURE_2D, r);
+    }*/
 
     if(r->datatype)
     {
@@ -328,6 +346,7 @@ void WrappedOpenGL::glBindTexture(GLenum target, GLuint texture)
 
       r->datatype = TextureBinding(target);
       m_Textures[r->GetResourceID()].curType = TextureTarget(target);
+      m_Textures[r->GetResourceID()].external = (target == eGL_TEXTURE_EXTERNAL_OES) ? true : false;
 
       r->AddChunk(chunk);
     }
@@ -7102,7 +7121,7 @@ void WrappedOpenGL::glTextureFoveationParametersQCOM(GLuint texture, GLuint laye
     }
   }
 }
-
+/*
 template <typename SerialiserType>
 bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLenum target,
                                                            GLeglImageOES image)
@@ -7142,8 +7161,8 @@ bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, 
 
   return true;
 }
-
-void WrappedOpenGL::glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
+*/
+/* void WrappedOpenGL::glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
 {
   GLResourceRecord *record = GetCtxData().GetActiveTexRecord(target);
   MarkReferencedWhileCapturing(record, eFrameRef_ReadBeforeWrite);
@@ -7196,7 +7215,7 @@ void WrappedOpenGL::glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES im
                                                         eFrameRef_CompleteWrite);
     }
   }
-}
+}*/
 
 #pragma endregion
 
@@ -7312,5 +7331,7 @@ INSTANTIATE_FUNCTION_SERIALISED(void, glInvalidateTexImage, GLuint texture, GLin
 INSTANTIATE_FUNCTION_SERIALISED(void, glInvalidateTexSubImage, GLuint texture, GLint level,
                                 GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width,
                                 GLsizei height, GLsizei depth);
-INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
-                                GLeglImageOES image);
+//INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
+//                                GLeglImageOES image);
+//INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLResource Resource,
+//                                GLeglImageOES image);
