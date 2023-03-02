@@ -1988,6 +1988,163 @@ void WrappedOpenGL::glTexStorageMem3DMultisampleEXT(GLenum target, GLsizei sampl
   }
 }
 
+template <typename SerialiserType>
+bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLResource Resource,
+                                                           GLenum target, GLeglImageOES image)
+{
+  SERIALISE_ELEMENT(Resource);
+  SERIALISE_ELEMENT(target);
+
+  TextureData &details = m_Textures[GetResourceManager()->GetResID(Resource)];
+
+  GLuint tex = Resource.name;
+
+  SERIALISE_ELEMENT_LOCAL(dimension, details.dimension);
+  SERIALISE_ELEMENT_LOCAL(width, details.width);
+  SERIALISE_ELEMENT_LOCAL(height, details.height);
+  SERIALISE_ELEMENT_LOCAL(depth, details.depth);
+  SERIALISE_ELEMENT_LOCAL(internalFormat, details.internalFormat);
+  SERIALISE_ELEMENT_LOCAL(mipsValid, details.mipsValid);
+
+  byte *Contents = NULL;
+  uint32_t ContentsLength = 0;
+  rdcarray<byte> data;
+
+  if(ser.IsWriting())
+  {
+    data = GetExternalTextureData(Resource.name);
+    ContentsLength = (uint32_t)data.size();
+    Contents = data.data();
+  }
+
+  SERIALISE_ELEMENT_ARRAY(Contents, ContentsLength);
+  SERIALISE_ELEMENT(ContentsLength);
+  SERIALISE_CHECK_READ_ERRORS();
+
+  if(IsReplayingAndReading())
+  {
+    RDCASSERT(details.curType == eGL_TEXTURE_2D); // emulated external texture target
+
+    details.dimension = dimension;
+    details.width = width;
+    details.height = height;
+    details.depth = depth;
+    details.samples = 0;
+    details.internalFormat = internalFormat;
+    details.mipsValid = mipsValid;
+    details.external = true;
+
+    GLuint ppb = 0, pub = 0;
+    PixelPackState pack;
+    PixelUnpackState unpack;
+
+    // save and restore pixel pack/unpack state. We only need one or the other but for clarity we
+    // push and pop both always.
+    if(!IsStructuredExporting(m_State))
+    {
+      GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&ppb);
+      GL.glGetIntegerv(eGL_PIXEL_UNPACK_BUFFER_BINDING, (GLint *)&pub);
+      GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, 0);
+      GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, 0);
+
+      pack.Fetch(false);
+      unpack.Fetch(false);
+
+      ResetPixelPackState(false, 1);
+      ResetPixelUnpackState(false, 1);
+    }
+
+    RDCASSERT(tex != 0);    // we need to have already created texture
+
+    GLuint prevtex = 0;
+    GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&prevtex);
+    GL.glBindTexture(details.curType, tex);
+
+    GLenum fmt = GetBaseFormat(details.internalFormat);
+    GLenum type = GetDataType(details.internalFormat);
+
+    // create MSAA texture we'll use for applying
+    CreateTextureImage(tex, details.internalFormat, fmt, type, details.curType,
+                                 details.dimension, details.width, details.height, details.depth,
+                                 details.samples, details.mipsValid);
+
+    GL.glTextureSubImage2DEXT(tex, details.curType, 0, 0, 0, details.width, details.height, fmt,
+                              type, Contents);
+
+    // restore pixel (un)packing state
+    if(!IsStructuredExporting(m_State))
+    {
+      GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, ppb);
+      GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
+      pack.Apply(false);
+      unpack.Apply(false);
+    }
+    GL.glBindTexture(details.curType, prevtex);
+
+    AddResourceInitChunk(Resource);
+  }
+  return true;
+}
+
+
+void WrappedOpenGL::glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
+{
+  RDCASSERT(IsCaptureMode(m_State));
+  SERIALISE_TIME_CALL(GL.glEGLImageTargetTexture2DOES(target, image));
+
+  if(IsCaptureMode(m_State))
+  {
+    RDCASSERT(target == eGL_TEXTURE_EXTERNAL_OES);
+
+    // get name from current binding
+    GLint textureHandle;
+    GL.glGetIntegerv(eGL_TEXTURE_BINDING_EXTERNAL_OES, &textureHandle);
+
+    GLResource res = TextureRes(GetCtx(), textureHandle);
+
+    GLResourceRecord *record = GetResourceManager()->GetResourceRecord(res);
+    RDCASSERT(record);
+
+    // update parameters then we got this call
+    GLint width = 0, height = 0, depth = 0;
+    GL.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_WIDTH, &width);
+    GL.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_HEIGHT, &height);
+    GL.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_DEPTH, &depth);
+    RDCASSERT(depth == 1);
+
+    GLenum internalFormat = eGL_NONE;
+    GL.glGetTexLevelParameteriv(target, 0, eGL_TEXTURE_INTERNAL_FORMAT, (GLint *)&internalFormat);
+
+    ResourceId texId = record->GetResourceID();
+
+    RDCASSERT(m_Textures[texId].curType == eGL_TEXTURE_EXTERNAL_OES);
+    m_Textures[texId].dimension = 2;
+    m_Textures[texId].width = width;
+    m_Textures[texId].height = height;
+    m_Textures[texId].depth = 1;
+    m_Textures[texId].samples = 1;
+    m_Textures[texId].internalFormat = internalFormat;
+    m_Textures[texId].mipsValid = 1;
+    m_Textures[texId].external = true;
+
+    {
+      USE_SCRATCH_SERIALISER();
+      SCOPED_SERIALISE_CHUNK(gl_CurChunk);
+      Serialise_glEGLImageTargetTexture2DOES(ser, res, target, image);
+
+      record->AddChunk(scope.Get());
+
+      // when bound to external memory, immediately consider dirty
+      GetResourceManager()->MarkDirtyResource(record->Resource);
+      GetResourceManager()->MarkResourceFrameReferenced(record->GetResourceID(),
+                                                        eFrameRef_CompleteWrite);
+       // illegal to re-type textures
+      record->VerifyDataType(target);
+    }
+  }
+}
+
+
 #pragma endregion
 
 INSTANTIATE_FUNCTION_SERIALISED(void, wglDXRegisterObjectNV, GLResource Resource, GLenum type,
@@ -2038,3 +2195,6 @@ INSTANTIATE_FUNCTION_SERIALISED(void, glImportSemaphoreWin32NameEXT, GLuint sema
 INSTANTIATE_FUNCTION_SERIALISED(GLboolean, glAcquireKeyedMutexWin32EXT, GLuint memory, GLuint64 key,
                                 GLuint timeout);
 INSTANTIATE_FUNCTION_SERIALISED(GLboolean, glReleaseKeyedMutexWin32EXT, GLuint memory, GLuint64 key);
+
+INSTANTIATE_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLResource Resource,
+                                GLenum target, GLeglImageOES image);

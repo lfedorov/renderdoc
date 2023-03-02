@@ -501,6 +501,8 @@ void WrappedOpenGL::BuildGLESExtensions()
   m_GLESExtensions.push_back("GL_OES_depth_texture_cube_map");
   m_GLESExtensions.push_back("GL_OES_draw_buffers_indexed");
   m_GLESExtensions.push_back("GL_OES_draw_elements_base_vertex");
+  m_GLESExtensions.push_back("GL_OES_EGL_image_external");
+  m_GLESExtensions.push_back("GL_OES_EGL_image_external_essl3");
   m_GLESExtensions.push_back("GL_OES_element_index_uint");
   m_GLESExtensions.push_back("GL_OES_fbo_render_mipmap");
   m_GLESExtensions.push_back("GL_OES_framebuffer_object");
@@ -540,6 +542,8 @@ void WrappedOpenGL::BuildGLESExtensions()
   // advertise EGL extensions in the gl ext string, just in case anyone is checking it for
   // this way.
   m_GLESExtensions.push_back("EGL_KHR_create_context");
+  m_GLESExtensions.push_back("EGL_KHR_image");
+  m_GLESExtensions.push_back("EGL_KHR_image_base");
   m_GLESExtensions.push_back("EGL_KHR_surfaceless_context");
 
   // we'll be sorting the implementation extension array, so make sure the
@@ -579,8 +583,6 @@ void WrappedOpenGL::BuildGLESExtensions()
   * GL_OES_compressed_paletted_texture
   * GL_OES_draw_texture
   * GL_OES_EGL_image
-  * GL_OES_EGL_image_external
-  * GL_OES_EGL_image_external_essl3
   * GL_OES_EGL_sync
   * GL_OES_extended_matrix_palette
   * GL_OES_fixed_point
@@ -778,6 +780,9 @@ void WrappedOpenGL::CreateReplayBackbuffer(const GLInitParams &params, ResourceI
   if(params.multiSamples > 1)
     target = eGL_TEXTURE_2D_MULTISAMPLE;
 
+  GLuint oldtex = 0;
+  GL.glGetIntegerv(TextureBinding(target), (GLint *)&oldtex);
+
   drv.glGenTextures(1, &col);
   drv.glBindTexture(target, col);
 
@@ -920,6 +925,7 @@ void WrappedOpenGL::CreateReplayBackbuffer(const GLInitParams &params, ResourceI
     }
   }
 
+  GL.glBindTexture(target, oldtex);
   GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, unpackbuf);
 }
 
@@ -3037,6 +3043,50 @@ void WrappedOpenGL::CreateTextureImage(GLuint tex, GLenum internalFormat, GLenum
   GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
 }
 
+rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
+{
+  rdcarray<byte> pixels;
+  GLuint prevTex = 0;
+  GL.glGetIntegerv(eGL_TEXTURE_BINDING_EXTERNAL_OES, (GLint *)&prevTex);
+  GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, texture);
+
+  GLint width = 0, height = 0;
+  GLenum internalFormat = eGL_NONE;
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_WIDTH, &width);
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_HEIGHT, &height);
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_INTERNAL_FORMAT,
+                              (GLint *)&internalFormat);
+  GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, prevTex);
+
+  size_t size =
+      GetByteSize(width, height, 1, GetBaseFormat(internalFormat), GetDataType(internalFormat));
+
+  pixels.resize(size);
+
+  // read pixels. ref: https://developer.arm.com/documentation/ka004859/1-0
+  GLuint prevReadFramebuffer = 0, prevPixelPackBuffer = 0, fb = 0;
+  GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&prevPixelPackBuffer);
+  GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, 0);
+  GL.glGenFramebuffers(1, &fb);
+  GL.glGetIntegerv(eGL_READ_FRAMEBUFFER_BINDING, (GLint *)&prevReadFramebuffer);
+  GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, fb);
+  GL.glFramebufferTexture2D(eGL_READ_FRAMEBUFFER, eGL_COLOR_ATTACHMENT0, eGL_TEXTURE_EXTERNAL_OES,
+                            texture, 0);
+
+  GLint prevPixelPackAlign = 0;
+  GL.glGetIntegerv(eGL_PACK_ALIGNMENT, &prevPixelPackAlign);
+  GL.glPixelStorei(eGL_PACK_ALIGNMENT, 1);
+  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat),
+                  GetDataType(internalFormat), pixels.data());
+  GL.glFlush();
+  GL.glFinish();
+  GL.glPixelStorei(eGL_PACK_ALIGNMENT, prevPixelPackAlign);
+  GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, prevReadFramebuffer);
+  GL.glDeleteFramebuffers(1, &fb);
+  GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, prevPixelPackBuffer);
+  return pixels;
+}
+
 void WrappedOpenGL::ReleaseResource(GLResource res)
 {
   switch(res.Namespace)
@@ -4829,6 +4879,10 @@ bool WrappedOpenGL::ProcessChunk(ReadSerialiser &ser, GLChunk chunk)
     case GLChunk::glGetQueryObjectuivEXT:
     case GLChunk::glGetQueryBufferObjectuiv:
       return Serialise_glGetQueryBufferObjectuiv(ser, 0, 0, eGL_NONE, 0);
+
+    case GLChunk::glEGLImageTargetTexture2DOES:
+      return Serialise_glEGLImageTargetTexture2DOES(ser, GLResource(MakeNullResource), eGL_NONE,
+                                                    GLeglImageOES(NULL));
 
     // these functions are not currently serialised - they do nothing on replay and are not
     // serialised for information (it would be harmless and perhaps useful for the user to see

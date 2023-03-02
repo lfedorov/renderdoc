@@ -246,12 +246,13 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
 {
   SERIALISE_ELEMENT(target);
   SERIALISE_ELEMENT_LOCAL(texture, TextureRes(GetCtx(), textureHandle));
-
   SERIALISE_CHECK_READ_ERRORS();
 
   if(IsReplayingAndReading())
   {
-    GL.glBindTexture(target, texture.name);
+    GLenum emulTarget = (target == eGL_TEXTURE_EXTERNAL_OES) ? eGL_TEXTURE_2D : target;
+
+    GL.glBindTexture(emulTarget, texture.name);
 
     if(IsLoading(m_State) && texture.name)
     {
@@ -259,7 +260,8 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
       // only set texture type if we don't have one. Otherwise refuse to re-type.
       if(tex.curType == eGL_NONE)
       {
-        tex.curType = TextureTarget(target);
+        tex.curType = TextureTarget(emulTarget);
+        tex.external = (target == eGL_TEXTURE_EXTERNAL_OES) ? true : false;
         AddResourceInitChunk(texture);
       }
       tex.creationFlags |= TextureCategory::ShaderRead;
@@ -328,6 +330,7 @@ void WrappedOpenGL::glBindTexture(GLenum target, GLuint texture)
 
       r->datatype = TextureBinding(target);
       m_Textures[r->GetResourceID()].curType = TextureTarget(target);
+      m_Textures[r->GetResourceID()].external = (target == eGL_TEXTURE_EXTERNAL_OES) ? true : false;
 
       r->AddChunk(chunk);
     }

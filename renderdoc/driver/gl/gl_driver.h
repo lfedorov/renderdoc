@@ -525,7 +525,7 @@ private:
 
   private:
     // kept private to force everyone through accessors above
-    GLResourceRecord *m_TextureRecord[11][256];
+    GLResourceRecord *m_TextureRecord[12][256];
   };
 
   struct ClientMemoryData
@@ -635,6 +635,8 @@ public:
   void CreateTextureImage(GLuint tex, GLenum internalFormat, GLenum initFormatHint,
                           GLenum initTypeHint, GLenum textype, GLint dim, GLint width, GLint height,
                           GLint depth, GLint samples, int mips);
+
+  rdcarray<byte> GetExternalTextureData(GLuint texture);
 
   void PushInternalShader() { m_InternalShader++; }
   void PopInternalShader() { m_InternalShader--; }
@@ -814,6 +816,7 @@ public:
           dimension(0),
           emulated(false),
           view(false),
+          external(false),
           width(0),
           height(0),
           depth(0),
@@ -830,7 +833,7 @@ public:
     GLResource resource;
     GLenum curType;
     GLint dimension;
-    bool emulated, view;
+    bool emulated, view, external;
     GLint width, height, depth, samples;
     TextureCategory creationFlags;
     GLenum internalFormat;
@@ -2562,6 +2565,12 @@ public:
   IMPLEMENT_FUNCTION_SERIALISED(void, glGetPerfQueryInfoINTEL, GLuint queryId,
                                 GLuint queryNameLength, GLchar *queryName, GLuint *dataSize,
                                 GLuint *noCounters, GLuint *noInstances, GLuint *capsMask);
+
+  template <typename SerialiserType>
+  bool Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLResource Resource,
+                                              GLenum target, GLeglImageOES image);
+  void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image);
+
 };
 
 class ScopedDebugContext

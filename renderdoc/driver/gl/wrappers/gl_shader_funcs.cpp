@@ -360,6 +360,9 @@ GLuint WrappedOpenGL::glCreateShader(GLenum type)
   return real;
 }
 
+#include <regex>
+#include <string>
+
 template <typename SerialiserType>
 bool WrappedOpenGL::Serialise_glShaderSource(SerialiserType &ser, GLuint shaderHandle, GLsizei count,
                                              const GLchar *const *source, const GLint *length)
@@ -390,7 +393,13 @@ bool WrappedOpenGL::Serialise_glShaderSource(SerialiserType &ser, GLuint shaderH
   {
     rdcarray<const char *> strs;
     for(size_t i = 0; i < sources.size(); i++)
+    {
+      std::string str = sources[i].c_str();
+      str = std::regex_replace(str, std::regex("samplerExternalOES"), "sampler2D"); // need more smart replacement
+      sources[i] = str.c_str();
+
       strs.push_back(sources[i].c_str());
+    }
 
     ResourceId liveId = GetResourceManager()->GetResID(shader);
 

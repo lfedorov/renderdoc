@@ -632,6 +632,115 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
     // texture parameters) without ever having storage allocated (via glTexStorage or glTexImage).
     // in that case, just ignore as we won't bother with the initial states.
   }
+  else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
+  {
+    GLuint oldtex = 0;
+    GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&oldtex);
+    GL.glBindTexture(details.curType, res.name);
+
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_WIDTH, (GLint *)&state.width);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_HEIGHT, (GLint *)&state.height);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_DEPTH, (GLint *)&state.depth);
+    GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_INTERNAL_FORMAT,
+                                (GLint *)&state.internalformat);
+
+    if(HasExt[EXT_texture_sRGB_decode])
+      GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_SRGB_DECODE_EXT,
+                                    (GLint *)&state.srgbDecode);
+    else
+      state.srgbDecode = eGL_DECODE_EXT;
+
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_COMPARE_FUNC,
+                                  (GLint *)&state.compareFunc);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_COMPARE_MODE,
+                                  (GLint *)&state.compareMode);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_MIN_FILTER,
+                                  (GLint *)&state.minFilter);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_MAG_FILTER,
+                                  (GLint *)&state.magFilter);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_R,
+                                  (GLint *)&state.wrap[0]);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_S,
+                                  (GLint *)&state.wrap[1]);
+    GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_WRAP_T,
+                                  (GLint *)&state.wrap[2]);
+    GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MIN_LOD, &state.minLod);
+    GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MAX_LOD, &state.maxLod);
+
+    if(HasExt[ARB_texture_swizzle] || HasExt[EXT_texture_swizzle])
+    {
+      GetTextureSwizzle(res.name, details.curType, state.swizzle);
+    }
+    else
+    {
+      state.swizzle[0] = eGL_RED;
+      state.swizzle[1] = eGL_GREEN;
+      state.swizzle[2] = eGL_BLUE;
+      state.swizzle[3] = eGL_ALPHA;
+    }
+
+    if(HasExt[ARB_texture_filter_anisotropic])
+      GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MAX_ANISOTROPY,
+                                    &state.maxAniso);
+    else
+      state.maxAniso = 1.0f;
+
+    GL.glBindTexture(details.curType, oldtex);
+
+    // read ext texture to compressed data
+    rdcarray<byte> &extData = details.compressedData[0];
+    extData = m_Driver->GetExternalTextureData(res.name);
+
+    state.type = eGL_TEXTURE_2D; // save this texture as just 2d data
+
+    // copy data to init state texture
+    GLuint tex = 0;
+    {
+      GLenum target = eGL_TEXTURE_2D;
+
+      GLuint ppb = 0, pub = 0;
+      PixelPackState pack;
+      PixelUnpackState unpack;
+
+      // save and restore pixel pack/unpack state. We only need one or the other but for clarity we
+      // push and pop both always.
+      {
+        GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&ppb);
+        GL.glGetIntegerv(eGL_PIXEL_UNPACK_BUFFER_BINDING, (GLint *)&pub);
+        GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, 0);
+        GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, 0);
+
+        pack.Fetch(false);
+        unpack.Fetch(false);
+
+        ResetPixelPackState(false, 1);
+        ResetPixelUnpackState(false, 1);
+      }
+
+      GL.glGenTextures(1, &tex);
+
+      GLuint prevtex = 0;
+      GL.glGetIntegerv(TextureBinding(target), (GLint *)&prevtex);
+      GL.glBindTexture(target, tex);
+
+      GLenum fmt = GetBaseFormat(details.internalFormat);
+      GLenum type = GetDataType(details.internalFormat);
+
+      GL.glTexImage2D(target, 0, details.internalFormat, details.width, details.height, 0, fmt,
+                      type, extData.data());
+
+      // restore pixel (un)packing state
+      {
+        GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, ppb);
+        GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
+        pack.Apply(false);
+        unpack.Apply(false);
+      }
+      GL.glBindTexture(target, prevtex);
+    }
+
+    initContents.resource = GLResource(res.ContextShareGroup, eResTexture, tex);
+  }
   else if(details.curType != eGL_TEXTURE_BUFFER)
   {
     GLenum binding = TextureBinding(details.curType);
@@ -1402,6 +1511,10 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
         // same applies for texture views, their data is copies under the aliased texture.
         // We just set the metadata blob.
       }
+      else if(TextureState.type == eGL_TEXTURE_EXTERNAL_OES)
+      {
+        RDCASSERT(false);
+      }
       else
       {
         // we need to treat compressed textures differently, so check it
@@ -1951,7 +2064,51 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
 
     const TextureStateInitialData &state = initial.tex;
 
-    if(details.curType != eGL_TEXTURE_BUFFER)
+    if(details.curType == eGL_TEXTURE_BUFFER)
+    {
+      GLuint buffer = state.texBuffer.name;
+
+      GLenum fmt = details.internalFormat;
+
+      if(buffer && fmt != eGL_NONE)
+      {
+        // update width from here as it's authoritative - the texture might have been resized in
+        // multiple rebinds that we will not have serialised before.
+        details.width =
+            state.texBufSize / uint32_t(GetByteSize(1, 1, 1, GetBaseFormat(fmt), GetDataType(fmt)));
+
+        if(GL.glTextureBufferRangeEXT && (state.texBufOffs > 0 || state.texBufSize > 0))
+        {
+          // restore texbuffer only state
+          GL.glTextureBufferRangeEXT(live.name, eGL_TEXTURE_BUFFER, details.internalFormat, buffer,
+                                     state.texBufOffs, state.texBufSize);
+        }
+        else
+        {
+          uint32_t bufSize = 0;
+          GL.glGetNamedBufferParameterivEXT(buffer, eGL_BUFFER_SIZE, (GLint *)&bufSize);
+          if(state.texBufOffs > 0 || state.texBufSize > bufSize)
+          {
+            const char *msg =
+                "glTextureBufferRangeEXT is not supported on your GL implementation, but is needed "
+                "for correct replay.\n"
+                "The original capture created a texture buffer with a range - replay will use the "
+                "whole buffer, which is likely incorrect.";
+            RDCERR("%s", msg);
+            m_Driver->AddDebugMessage(MessageCategory::Resource_Manipulation, MessageSeverity::High,
+                                      MessageSource::IncorrectAPIUse, msg);
+          }
+
+          GL.glTextureBufferEXT(live.name, eGL_TEXTURE_BUFFER, details.internalFormat, buffer);
+        }
+      }
+    }
+    else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
+    {
+      // do nothing
+      RDCASSERT(false);
+    }
+    else
     {
       GLuint tex = initial.resource.name;
 
@@ -2177,45 +2334,6 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
         {
           GL.glTextureParameterfvEXT(live.name, details.curType, eGL_TEXTURE_MIN_LOD, &state.minLod);
           GL.glTextureParameterfvEXT(live.name, details.curType, eGL_TEXTURE_MAX_LOD, &state.maxLod);
-        }
-      }
-    }
-    else
-    {
-      GLuint buffer = state.texBuffer.name;
-
-      GLenum fmt = details.internalFormat;
-
-      if(buffer && fmt != eGL_NONE)
-      {
-        // update width from here as it's authoratitive - the texture might have been resized in
-        // multiple rebinds that we will not have serialised before.
-        details.width =
-            state.texBufSize / uint32_t(GetByteSize(1, 1, 1, GetBaseFormat(fmt), GetDataType(fmt)));
-
-        if(GL.glTextureBufferRangeEXT && (state.texBufOffs > 0 || state.texBufSize > 0))
-        {
-          // restore texbuffer only state
-          GL.glTextureBufferRangeEXT(live.name, eGL_TEXTURE_BUFFER, details.internalFormat, buffer,
-                                     state.texBufOffs, state.texBufSize);
-        }
-        else
-        {
-          uint32_t bufSize = 0;
-          GL.glGetNamedBufferParameterivEXT(buffer, eGL_BUFFER_SIZE, (GLint *)&bufSize);
-          if(state.texBufOffs > 0 || state.texBufSize > bufSize)
-          {
-            const char *msg =
-                "glTextureBufferRangeEXT is not supported on your GL implementation, but is needed "
-                "for correct replay.\n"
-                "The original capture created a texture buffer with a range - replay will use the "
-                "whole buffer, which is likely incorrect.";
-            RDCERR("%s", msg);
-            m_Driver->AddDebugMessage(MessageCategory::Resource_Manipulation, MessageSeverity::High,
-                                      MessageSource::IncorrectAPIUse, msg);
-          }
-
-          GL.glTextureBufferEXT(live.name, eGL_TEXTURE_BUFFER, details.internalFormat, buffer);
         }
       }
     }
