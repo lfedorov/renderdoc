@@ -1637,36 +1637,7 @@ void GLReplay::PickPixel(ResourceId texture, uint32_t x, uint32_t y, const Subre
 
   RenderTextureInternal(texDisplay, eTexDisplay_MipShift);
 
-  //drv.glFlush();
-  //drv.glFinish();
-
   drv.glReadPixels(0, 0, 1, 1, eGL_RGBA, eGL_FLOAT, (void *)pixel);
-
-
-  /*RDCASSERT(drv.glGetError() == eGL_NONE);
-
-
-  {
-    GLuint prevtex = 0;
-    GL.glGetIntegerv(TextureBinding(texDetails.curType), (GLint *)&prevtex);
-    GL.glBindTexture(texDetails.curType, texDetails.resource.name);
-
-    rdcarray<byte> data2;
-    data2.resize(1024 * 1024*100);
-    memset(data2.data(), 0, 1024 * 1024*100);
-
-    GLenum fmt = GetBaseFormat(texDetails.internalFormat);
-    GLenum type = GetDataType(texDetails.internalFormat);
-    // get pixl from tex
-    // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-    // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-    GL.glGetTexImage(eGL_TEXTURE_2D, 0, fmt, type, data2.data());
-    static int a = 0;
-    a++;
-
-    GL.glBindTexture(texDetails.curType, prevtex);
-  }*/
-
 
   if(!HasExt[ARB_gpu_shader5])
   {
@@ -1815,7 +1786,6 @@ bool GLReplay::GetMinMax(ResourceId texid, const Subresource &sub, CompType type
     case eGL_TEXTURE_1D_ARRAY: texSlot = RESTYPE_TEX1DARRAY; break;
     case eGL_TEXTURE_2D_ARRAY: texSlot = RESTYPE_TEX2DARRAY; break;
     case eGL_TEXTURE_CUBE_MAP_ARRAY: texSlot = RESTYPE_TEXCUBEARRAY; break;
-    case eGL_TEXTURE_EXTERNAL_OES: texSlot = RESTYPE_TEXEXTERNAL; break;
   }
 
   GLenum target = texDetails.curType;
@@ -2046,7 +2016,6 @@ bool GLReplay::GetHistogram(ResourceId texid, const Subresource &sub, CompType t
     case eGL_TEXTURE_1D_ARRAY: texSlot = RESTYPE_TEX1DARRAY; break;
     case eGL_TEXTURE_2D_ARRAY: texSlot = RESTYPE_TEX2DARRAY; break;
     case eGL_TEXTURE_CUBE_MAP_ARRAY: texSlot = RESTYPE_TEXCUBEARRAY; break;
-    case eGL_TEXTURE_EXTERNAL_OES: texSlot = RESTYPE_TEXEXTERNAL; break;
   }
 
   GLenum target = texDetails.curType;
@@ -2223,7 +2192,7 @@ bool GLReplay::GetHistogram(ResourceId texid, const Subresource &sub, CompType t
   GLint forcedparam[4] = {};
 
   bool levelsTex = (target != eGL_TEXTURE_BUFFER && target != eGL_TEXTURE_2D_MULTISAMPLE &&
-                    target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY && target != eGL_TEXTURE_EXTERNAL_OES);
+                    target != eGL_TEXTURE_2D_MULTISAMPLE_ARRAY);
 
   if(levelsTex)
   {

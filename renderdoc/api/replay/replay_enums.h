@@ -733,11 +733,10 @@ DOCUMENT(R"(The dimensionality of a texture binding.
 .. data:: TextureCubeArray
 
   A Cubemap texture array.
-
-.. data:: TextureExternal
-
-  An External texture.
 )");
+//.. data:: TextureExternal
+
+//  An External texture.
 enum class TextureType : uint32_t
 {
   Unknown,
@@ -753,7 +752,7 @@ enum class TextureType : uint32_t
   Texture3D,
   TextureCube,
   TextureCubeArray,
-  TextureExternal,
+  //TextureExternal,
   Count,
 };
 

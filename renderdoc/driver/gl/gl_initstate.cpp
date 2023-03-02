@@ -637,12 +637,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   }
   else if(details.curType == eGL_TEXTURE_EXTERNAL_OES)
   {
-    //RDCASSERT(false);
-
-    //  RDCERR("L1F PrepareTextureInitialContents name %d, w %d, h = %d, curType = %d", res.name,
-    //       details.width, details.height, details.curType);
-
-
     GLuint oldtex = 0;
     GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&oldtex);
     GL.glBindTexture(details.curType, res.name);
@@ -653,12 +647,11 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
     GL.glGetTexLevelParameteriv(details.curType, 0, eGL_TEXTURE_INTERNAL_FORMAT,
                                 (GLint *)&state.internalformat);
 
-     if(HasExt[EXT_texture_sRGB_decode])
+    if(HasExt[EXT_texture_sRGB_decode])
       GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_SRGB_DECODE_EXT,
                                     (GLint *)&state.srgbDecode);
     else
-      state.srgbDecode = eGL_DECODE_EXT;    // eGL_DECODE_EXT;
-
+      state.srgbDecode = eGL_DECODE_EXT;
 
     GL.glGetTextureParameterivEXT(res.name, details.curType, eGL_TEXTURE_COMPARE_FUNC,
                                   (GLint *)&state.compareFunc);
@@ -676,7 +669,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
                                   (GLint *)&state.wrap[2]);
     GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MIN_LOD, &state.minLod);
     GL.glGetTextureParameterfvEXT(res.name, details.curType, eGL_TEXTURE_MAX_LOD, &state.maxLod);
-
 
     if(HasExt[ARB_texture_swizzle] || HasExt[EXT_texture_swizzle])
     {
@@ -704,7 +696,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
 
     state.type = eGL_TEXTURE_2D; // save this texture as just 2d data
 
-
     // copy data to init state texture
     GLuint tex = 0;
     {
@@ -716,7 +707,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
 
       // save and restore pixel pack/unpack state. We only need one or the other but for clarity we
       // push and pop both always.
-      //if(ser.IsWriting() || !IsStructuredExporting(m_State))
       {
         GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&ppb);
         GL.glGetIntegerv(eGL_PIXEL_UNPACK_BUFFER_BINDING, (GLint *)&pub);
@@ -742,13 +732,7 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
       GL.glTexImage2D(target, 0, details.internalFormat, details.width, details.height, 0, fmt,
                       type, extData.data());
 
-
-      // set data as simple 2d texture
-      //GL.glTextureSubImage2DEXT(tex, target, 0, 0, 0, details.width, details.height, fmt, type,
-      //                          extData.data());
-
       // restore pixel (un)packing state
-      //if(/* ser.IsWriting() ||*/ !IsStructuredExporting(m_State))
       {
         GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, ppb);
         GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
@@ -1524,7 +1508,7 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
                                                 ? m_Driver->m_Textures[id]
                                                 : m_Driver->m_Textures[GetLiveID(id)];
 
-      if(!IsStructuredExporting(m_State))
+      /*if(!IsStructuredExporting(m_State))
       {
         if(ser.IsReading())
         {
@@ -1539,7 +1523,7 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
               "L1F Serialise_InitialState WRITE  initial res name %d, w %d, h = %d, curType = %d",
               initial->resource.name, details.width, details.height, details.curType);
         }
-      }
+      }*/
 
 
       if(TextureState.type == eGL_TEXTURE_BUFFER || TextureState.isView)
@@ -1551,40 +1535,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
       else if(TextureState.type == eGL_TEXTURE_EXTERNAL_OES)
       {
         RDCASSERT(false);
-        /* rdcarray<byte> &extData = details.compressedData[0];
-        uint64_t scratchSize = (uint64_t)extData.size();
-        SERIALISE_ELEMENT(scratchSize);
-        if(ser.IsReading())
-        {
-          extData.resize(scratchSize);
-        }
-        byte *scratchBuf = extData.data();
-        SERIALISE_ELEMENT_ARRAY(scratchBuf, scratchSize);
-
-        // on replay, restore the data into the initial contents texture
-        if(IsReplayingAndReading() && !ser.IsErrored())
-        {
-          details.mipsValid = 1;
-          details.dimension = 2;
-          details.depth = 1;
-          details.width = TextureState.width;
-          details.height = TextureState.height;
-          details.internalFormat = TextureState.internalformat;
-          details.compressedData[0].assign(scratchBuf, scratchSize);
-
-          GLeglImageOES eglImage =
-              m_Driver->CreateEGLImage(TextureState.width, TextureState.height,
-                                       TextureState.internalformat, scratchBuf, scratchSize);
-          GLResource liveRes = GetLiveResource(id);
-
-          GLuint prevtex = 0;
-          GL.glGetIntegerv(TextureBinding(TextureState.type), (GLint *)&prevtex);
-
-          GL.glBindTexture(TextureState.type, liveRes.name);
-          // associate GL texture and EGLimage
-          GL.glEGLImageTargetTexture2DOES(TextureState.type, eglImage);
-          GL.glBindTexture(TextureState.type, prevtex);
-        }*/
       }
       else
       {
@@ -1909,25 +1859,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
             }
           }
 
-          /*if(!IsStructuredExporting(m_State) && !ser.IsErrored())
-          {
-            GLuint prevtex2 = 0;
-            GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&prevtex2);
-            GL.glBindTexture(details.curType, tex);
-
-            rdcarray<byte> data2;
-            data2.resize(1024*1024);
-            memset(data2.data(), 0, 1024 * 1024);
-            // get pixl from tex
-            // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-            // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-            GL.glGetTexImage(eGL_TEXTURE_2D, 0, fmt, type, data2.data());
-            static int a = 0;
-            a++;
-
-            GL.glBindTexture(details.curType, prevtex2);
-          }*/
-
           // free our scratch buffer
           FreeAlignedBuffer(scratchBuf);
         }
@@ -1950,7 +1881,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
           GL.glDeleteTextures(1, &tex);
           tex = msaaTex;
         }
-
 
         initContents.resource = TextureRes(m_Driver->GetCtx(), tex);
       }
@@ -2361,29 +2291,6 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
                                       i, 0, 0, 0, w, h, d);
               }
             }
-
-
-           /*{
-              GLuint prevtex = 0;
-              GL.glGetIntegerv(TextureBinding(details.curType), (GLint *)&prevtex);
-              GL.glBindTexture(details.curType, live.name);
-
-              rdcarray<byte> data2;
-              data2.resize(1024 * 1024);
-              memset(data2.data(), 0, 1024 * 1024);
-
-              GLenum fmt = GetBaseFormat(details.internalFormat);
-              GLenum type = GetDataType(details.internalFormat);
-              // get pixl from tex
-              // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-              // GL.glGetTexImage(eGL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, (void *)(new_array));
-              GL.glGetTexImage(eGL_TEXTURE_2D, 0, fmt, type, data2.data());
-              static int a = 0;
-              a++;
-
-              GL.glBindTexture(details.curType, prevtex);
-            }*/
-
           }
         }
 

@@ -636,6 +636,8 @@ public:
                           GLenum initTypeHint, GLenum textype, GLint dim, GLint width, GLint height,
                           GLint depth, GLint samples, int mips);
 
+  rdcarray<byte> GetExternalTextureData(GLuint texture);
+
   void PushInternalShader() { m_InternalShader++; }
   void PopInternalShader() { m_InternalShader--; }
   bool IsInternalShader() { return m_InternalShader > 0; }
@@ -662,12 +664,6 @@ public:
   void AddDebugMessage(MessageCategory c, MessageSeverity sv, MessageSource src, rdcstr d);
 
   void RegisterDebugCallback();
-
-  rdcarray<rdcpair<GLeglImageOES, struct AHardwareBuffer *>> m_ExternalTextureResources;
-  GLeglImageOES CreateEGLImage(GLint width, GLint height, GLenum internal_format,
-                               const byte *pixels, uint64_t size);
-  rdcarray<byte> GetExternalTextureData(GLuint texture);
-  void ReleaseExternalTextureResources();
 
 public:
   bool IsUnsafeDraw(uint32_t eventId) { return m_UnsafeDraws.find(eventId) != m_UnsafeDraws.end(); }
@@ -2570,11 +2566,6 @@ public:
   IMPLEMENT_FUNCTION_SERIALISED(void, glGetPerfQueryInfoINTEL, GLuint queryId,
                                 GLuint queryNameLength, GLchar *queryName, GLuint *dataSize,
                                 GLuint *noCounters, GLuint *noInstances, GLuint *capsMask);
-
-  //IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLenum target,
-  //                              GLeglImageOES image);
-  //IMPLEMENT_FUNCTION_SERIALISED(void, glEGLImageTargetTexture2DOES, GLResource Resource,
-  //                              GLeglImageOES image);
 
   template <typename SerialiserType>
   bool Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, GLResource Resource,

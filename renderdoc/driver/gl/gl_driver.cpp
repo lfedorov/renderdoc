@@ -583,8 +583,6 @@ void WrappedOpenGL::BuildGLESExtensions()
   * GL_OES_compressed_paletted_texture
   * GL_OES_draw_texture
   * GL_OES_EGL_image
-  // * GL_OES_EGL_image_external
-  // * GL_OES_EGL_image_external_essl3
   * GL_OES_EGL_sync
   * GL_OES_extended_matrix_palette
   * GL_OES_fixed_point
@@ -3043,6 +3041,56 @@ void WrappedOpenGL::CreateTextureImage(GLuint tex, GLenum internalFormat, GLenum
 
   GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, ppb);
   GL.glBindBuffer(eGL_PIXEL_UNPACK_BUFFER, pub);
+}
+
+rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
+{
+  rdcarray<byte> pixels;
+  GLuint prevTex = 0;
+  GL.glGetIntegerv(eGL_TEXTURE_BINDING_EXTERNAL_OES, (GLint *)&prevTex);
+  GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, texture);
+
+  GLint width = 0, height = 0;
+  GLenum internalFormat = eGL_NONE;
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_WIDTH, &width);
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_HEIGHT, &height);
+  GL.glGetTexLevelParameteriv(eGL_TEXTURE_EXTERNAL_OES, 0, eGL_TEXTURE_INTERNAL_FORMAT,
+                              (GLint *)&internalFormat);
+  GL.glBindTexture(eGL_TEXTURE_EXTERNAL_OES, prevTex);
+
+  size_t size =
+      GetByteSize(width, height, 1, GetBaseFormat(internalFormat), GetDataType(internalFormat));
+
+  pixels.resize(size);
+
+  RDCERR("L1F GET name %d, w %d, h %d, size (%d), format = %d", texture, width, height, size,
+         internalFormat);
+
+  // read pixels. ref: https://developer.arm.com/documentation/ka004859/1-0
+  GLuint prevReadFramebuffer = 0, prevPixelPackBuffer = 0, fb = 0;
+  GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&prevPixelPackBuffer);
+  GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, 0);
+  GL.glGenFramebuffers(1, &fb);
+  GL.glGetIntegerv(eGL_READ_FRAMEBUFFER_BINDING, (GLint *)&prevReadFramebuffer);
+  GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, fb);
+  GL.glFramebufferTexture2D(eGL_READ_FRAMEBUFFER, eGL_COLOR_ATTACHMENT0, eGL_TEXTURE_EXTERNAL_OES,
+                            texture, 0);
+
+  GLint prevPixelPackAlign = 0;
+  GL.glGetIntegerv(eGL_PACK_ALIGNMENT, &prevPixelPackAlign);
+  GL.glPixelStorei(eGL_PACK_ALIGNMENT, 1);
+  GL.glReadPixels(0, 0, width, height, GetBaseFormat(internalFormat),
+                  GetDataType(internalFormat), pixels.data());
+  GL.glFlush();
+  GL.glFinish();
+  GL.glPixelStorei(eGL_PACK_ALIGNMENT, prevPixelPackAlign);
+  GL.glBindFramebuffer(eGL_READ_FRAMEBUFFER, prevReadFramebuffer);
+  GL.glDeleteFramebuffers(1, &fb);
+  GL.glBindBuffer(eGL_PIXEL_PACK_BUFFER, prevPixelPackBuffer);
+
+  RDCASSERT(GL.glGetError() == eGL_NONE);
+
+  return pixels;
 }
 
 void WrappedOpenGL::ReleaseResource(GLResource res)
@@ -5560,7 +5608,7 @@ void WrappedOpenGL::AddUsage(const ActionDescription &a)
             case TextureType::Texture3D: texList = rs.Tex3D; break;
             case TextureType::TextureCube: texList = rs.TexCube; break;
             case TextureType::TextureCubeArray: texList = rs.TexCubeArray; break;
-            case TextureType::TextureExternal: texList = rs.TexExternal; break;
+            //case TextureType::TextureExternal: texList = rs.TexExternal; break;
             case TextureType::Count: RDCERR("Invalid shader resource type"); break;
           }
 
