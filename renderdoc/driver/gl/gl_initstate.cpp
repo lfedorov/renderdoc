@@ -626,9 +626,6 @@ void GLResourceManager::PrepareTextureInitialContents(ResourceId liveid, Resourc
   state.type = details.curType;
   state.mips = 1;
 
-  RDCLOG("L1F PrepareTextureInitialContents name %d, w %d, h = %d, curType = %d, external %d",
-         res.name, details.width, details.height, details.curType, int(details.external));
-
   if(details.internalFormat == eGL_NONE)
   {
     // textures can get here as GL_NONE if they were created and dirtied (by setting lots of
@@ -1508,24 +1505,6 @@ bool GLResourceManager::Serialise_InitialState(SerialiserType &ser, ResourceId i
                                                 ? m_Driver->m_Textures[id]
                                                 : m_Driver->m_Textures[GetLiveID(id)];
 
-      /*if(!IsStructuredExporting(m_State))
-      {
-        if(ser.IsReading())
-        {
-          GLResource liveRes = GetLiveResource(id);
-
-          RDCLOG("L1F Serialise_InitialState READ  live res name %d, w %d, h = %d, curType = %d",
-                 int(liveRes.name), int(details.width), int(details.height), int(details.curType));
-        }
-        else
-        {
-          RDCLOG(
-              "L1F Serialise_InitialState WRITE  initial res name %d, w %d, h = %d, curType = %d",
-              initial->resource.name, details.width, details.height, details.curType);
-        }
-      }*/
-
-
       if(TextureState.type == eGL_TEXTURE_BUFFER || TextureState.isView)
       {
         // no contents to copy for texture buffer (it's copied under the buffer)
@@ -2084,10 +2063,6 @@ void GLResourceManager::Apply_InitialState(GLResource live, const GLInitialConte
     WrappedOpenGL::TextureData &details = m_Driver->m_Textures[Id];
 
     const TextureStateInitialData &state = initial.tex;
-
-    
-    RDCLOG("L1F Applye_InitialState live res name %d, w %d, h = %d, curType = %d", int(live.name),
-           int(details.width), int(details.height), int(details.curType));
 
     if(details.curType == eGL_TEXTURE_BUFFER)
     {

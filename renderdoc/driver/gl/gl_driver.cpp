@@ -3063,9 +3063,6 @@ rdcarray<byte> WrappedOpenGL::GetExternalTextureData(GLuint texture)
 
   pixels.resize(size);
 
-  RDCERR("L1F GET name %d, w %d, h %d, size (%d), format = %d", texture, width, height, size,
-         internalFormat);
-
   // read pixels. ref: https://developer.arm.com/documentation/ka004859/1-0
   GLuint prevReadFramebuffer = 0, prevPixelPackBuffer = 0, fb = 0;
   GL.glGetIntegerv(eGL_PIXEL_PACK_BUFFER_BINDING, (GLint *)&prevPixelPackBuffer);

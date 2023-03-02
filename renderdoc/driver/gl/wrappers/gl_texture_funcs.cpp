@@ -246,19 +246,13 @@ bool WrappedOpenGL::Serialise_glBindTexture(SerialiserType &ser, GLenum target, 
 {
   SERIALISE_ELEMENT(target);
   SERIALISE_ELEMENT_LOCAL(texture, TextureRes(GetCtx(), textureHandle));
-
   SERIALISE_CHECK_READ_ERRORS();
-
-  RDCLOG("L1F Serialise_glBindTexture IN ctx=%p", GetCtx().ctx);
 
   if(IsReplayingAndReading())
   {
     GLenum emulTarget = (target == eGL_TEXTURE_EXTERNAL_OES) ? eGL_TEXTURE_2D : target;
 
     GL.glBindTexture(emulTarget, texture.name);
-
-    RDCLOG("L1F Serialise_glBindTexture ctx=%p, target %d, texture %d", GetCtx().ctx,
-           int(emulTarget), texture.name);
 
     if(IsLoading(m_State) && texture.name)
     {

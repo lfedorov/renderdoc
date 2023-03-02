@@ -2015,11 +2015,6 @@ bool WrappedOpenGL::Serialise_glEGLImageTargetTexture2DOES(SerialiserType &ser, 
     data = GetExternalTextureData(Resource.name);
     ContentsLength = (uint32_t)data.size();
     Contents = data.data();
-
-    RDCLOG("L1F Serialise_glEGLImageTargetTexture2DOES name %d, w %d, h = %d, data (%d) %d %d",
-           Resource.name, width, height,
-           ContentsLength, int(*(((int *)Contents) + 0)),
-           int(*(((int *)Contents) + 1)) );
   }
 
   SERIALISE_ELEMENT_ARRAY(Contents, ContentsLength);
